@@ -53,7 +53,7 @@ impl<Source: RemoteGraphQLDataSource> ServiceRouteTable<Source> {
             anyhow::anyhow!("Service '{}' is not defined in the routing table.", service)
         })?;
 
-        let url = source.address().to_string();
+        let url = format!("http://{}", source.address()) ;
 
         source.will_send_request(&mut request, ctx);
 
@@ -76,11 +76,11 @@ impl<Source: RemoteGraphQLDataSource> ServiceRouteTable<Source> {
         request: RequestData,
     ) -> anyhow::Result<Response> {
         let service = service.as_ref();
-        let route = self.0.get(service).ok_or_else(|| {
+        let source = self.0.get(service).ok_or_else(|| {
             anyhow::anyhow!("Service '{}' is not defined in the routing table.", service)
         })?;
 
-        let url = route.address().to_string();
+        let url = format!("http://{}", source.address()) ;
 
         let raw_resp = HTTP_CLIENT
             .post(&url)
@@ -91,7 +91,6 @@ impl<Source: RemoteGraphQLDataSource> ServiceRouteTable<Source> {
         tracing::info!("{:?}", raw_resp.as_ref().err());
         let raw_resp = raw_resp?;
         let resp = raw_resp.json::<Response>().await?;
-
         Ok(resp)
     }
 }
