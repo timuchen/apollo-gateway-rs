@@ -87,8 +87,9 @@ impl<Source: RemoteGraphQLDataSource> ServiceRouteTable<Source> {
             .json(&request)
             .send()
             .and_then(|res| async move { res.error_for_status() })
-            .await?;
-
+            .await;
+        tracing::info!("{:?}", raw_resp.as_ref().err());
+        let raw_resp = raw_resp?;
         let resp = raw_resp.json::<Response>().await?;
 
         Ok(resp)
