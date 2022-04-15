@@ -39,7 +39,7 @@ async fn main() -> std::io::Result<()> {
         .wrap(TracingLogger::default())
         .configure(configurate_api)
     )
-        .bind("0.0.0.0:40001")?
+        .bind("0.0.0.0:4000")?
         .run()
         .await
 }

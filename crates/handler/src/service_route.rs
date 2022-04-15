@@ -82,13 +82,15 @@ impl<Source: RemoteGraphQLDataSource> ServiceRouteTable<Source> {
 
         let url = format!("http://{}", source.address()) ;
 
+        tracing::info!("calling {url}");
+
         let raw_resp = HTTP_CLIENT
             .post(&url)
             .json(&request)
             .send()
             .and_then(|res| async move { res.error_for_status() })
             .await;
-        tracing::info!("{:?}", raw_resp.as_ref().err());
+        tracing::error!("{:?}", raw_resp.as_ref().err());
         let raw_resp = raw_resp?;
         let resp = raw_resp.json::<Response>().await?;
         Ok(resp)
