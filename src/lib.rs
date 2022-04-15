@@ -1,6 +1,6 @@
 use actix_web::web::ServiceConfig;
-pub use datasource::RemoteGraphQLDataSource;
-pub use graphgate_planner::RequestData;
+pub use datasource::{RemoteGraphQLDataSource, Context};
+pub use graphgate_planner::{RequestData, Request, Response};
 use graphgate_handler::{ServiceRouteTable, SharedRouteTable};
 use std::collections::HashMap;
 use std::iter::FromIterator;
