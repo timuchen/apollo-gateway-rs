@@ -194,6 +194,7 @@ impl<S: RemoteGraphQLDataSource> SharedRouteTable<S> {
         )
         .await;
         let builder = HttpResponse::builder().status(StatusCode::OK);
+        tracing::info!("{:?}", resp.data);
         builder.body(serde_json::to_string(&resp).unwrap()).unwrap()
     }
 }

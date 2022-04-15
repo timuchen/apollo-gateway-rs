@@ -67,7 +67,6 @@ pub mod actix {
         req: actix_web::HttpRequest,
     ) -> HttpResponse {
         let query = request.into_inner();
-        tracing::info!("call request {:?}", query);
         let request = Request {
             headers: HashMap::new(),
             data: query,
