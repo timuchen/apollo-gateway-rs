@@ -1,5 +1,5 @@
 [package]
-name = "graphgate"
+name = "graphql-gateway"
 version = "0.5.1"
 authors = ["Sunli <scott_s829@163.com>"]
 edition = "2018"
@@ -12,7 +12,8 @@ readme = "README.md"
 
 [dependencies]
 graphgate-handler = { version = "0.5.0", path = "./crates/handler" }
-
+datasource = {path = "./crates/datasource"}
+graphgate-planner = {path = "./crates/planner"}
 serde = { version = "1.0.133", features = ["derive"] }
 anyhow = "1.0.52"
 structopt = "0.3.25"
@@ -28,20 +29,24 @@ opentelemetry = { version = "0.16.0", features = ["rt-tokio", "metrics"] }
 opentelemetry-jaeger = { version = "0.15.0", features = ["rt-tokio"] }
 opentelemetry-prometheus = "0.9.0"
 prometheus = "0.12.0"
+actix-web = "4.0.1"
+async-graphql = { version = "3.0.24", features = ["apollo_tracing"] }
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.jemallocator]
 version = "0.3.2"
 
 [dev-dependencies]
-async-graphql = { version = "3.0.24", features = ["apollo_tracing"] }
+tracing-actix-web = { version =  "0.5", features = ["opentelemetry_0_16"] }
+tracing = "0.1"
+actix-identity = "0.4.0"
 async-graphql-warp = "3.0.24"
 fastrand = "1.6.0"
 async-stream = "0.3.2"
 futures-util = "0.3.19"
 
 [[example]]
-name = "builtin_scalar_bug"
-path = "./examples/builtin_scalar_bug/bug.rs"
+name = "actix"
+path = "./examples/actix/main.rs"
 
 [workspace]
 members = [
@@ -49,4 +54,5 @@ members = [
     "crates/planner",
     "crates/validation",
     "crates/handler",
+    "crates/datasource"
 ]

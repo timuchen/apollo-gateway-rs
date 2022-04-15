@@ -18,7 +18,7 @@ GraphGate is [Apollo Federation](https://www.apollographql.com/apollo-federation
 A GraphQL API composed of 3 services (accounts, products, reviews).
 
 ```shell
-docker run -p 8000:8000 scott829/graphgate-standalone-demo:latest
+docker run -p 8000:8000 scott829/graphql-gateway-standalone-demo:latest
 ```
 
 Open browser [http://localhost:8000](http://localhost:8000)

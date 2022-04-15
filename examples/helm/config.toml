@@ -1,4 +1,0 @@
-bind = "0.0.0.0:8000"
-
-[jaeger]
-agent_endpoint = "jaeger-agent:6831"

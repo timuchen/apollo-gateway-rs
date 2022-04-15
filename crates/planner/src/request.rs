@@ -1,15 +1,22 @@
+use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use value::{ConstValue, Variables};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Request {
+    pub data: RequestData,
+    pub headers: HashMap<String, String>
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RequestData {
     pub query: String,
     pub operation: Option<String>,
     #[serde(skip_serializing_if = "variables_is_empty", default)]
     pub variables: Variables,
 }
 
-impl Request {
+impl RequestData {
     pub fn new(query: impl Into<String>) -> Self {
         Self {
             query: query.into(),

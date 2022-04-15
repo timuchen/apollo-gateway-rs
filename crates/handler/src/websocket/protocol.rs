@@ -1,5 +1,5 @@
 use anyhow::Error;
-use graphgate_planner::{Request, Response};
+use graphgate_planner::{Request, RequestData, Response};
 use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]

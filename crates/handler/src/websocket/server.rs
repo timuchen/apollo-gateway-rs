@@ -9,6 +9,7 @@ use value::ConstValue;
 use warp::http::HeaderMap;
 use warp::ws::Message;
 use warp::Error;
+use datasource::RemoteGraphQLDataSource;
 
 use super::controller::WebSocketController;
 use super::grouped_stream::{GroupedStream, StreamEvent};
@@ -16,9 +17,9 @@ use super::protocol::{ClientMessage, ConnectionError, Protocols, ServerMessage};
 use crate::executor::Executor;
 use crate::ServiceRouteTable;
 
-pub async fn server(
+pub async fn server<S: RemoteGraphQLDataSource>(
     schema: Arc<ComposedSchema>,
-    route_table: Arc<ServiceRouteTable>,
+    route_table: Arc<ServiceRouteTable<S>>,
     stream: impl Stream<Item = Result<Message, Error>> + Sink<Message>,
     protocol: Protocols,
     header_map: HeaderMap,
@@ -63,7 +64,7 @@ pub async fn server(
                         }
                         ClientMessage::Start { id, payload } | ClientMessage::Subscribe { id, payload } => {
                             let controller = controller.get_or_insert_with(|| WebSocketController::new(route_table.clone(), &header_map, None)).clone();
-                            let document = match parser::parse_query(&payload.query) {
+                            let document = match parser::parse_query(&payload.data.query) {
                                 Ok(document) => document,
                                 Err(err) => {
                                     let resp = Response {
@@ -86,7 +87,7 @@ pub async fn server(
                             let stream = {
                                 let id = id.clone();
                                 async_stream::stream! {
-                                    let builder = PlanBuilder::new(&schema, document).variables(payload.variables);
+                                    let builder = PlanBuilder::new(&schema, document).variables(payload.data.variables);
                                     let node = match builder.plan() {
                                         Ok(node) => node,
                                         Err(resp) => {

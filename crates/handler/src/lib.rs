@@ -1,9 +1,9 @@
 #![forbid(unsafe_code)]
 
-pub use service_route::{ServiceRoute, ServiceRouteTable};
+pub use service_route::{ServiceRouteTable};
 pub use shared_route_table::SharedRouteTable;
 
-mod constants;
+pub mod constants;
 mod executor;
 mod fetcher;
 mod introspection;

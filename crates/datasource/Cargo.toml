@@ -1,0 +1,14 @@
+[package]
+name = "datasource"
+version = "0.5.1"
+authors = ["Sunli <scott_s829@163.com>"]
+edition = "2018"
+description = "GraphGate is Apollo Federation implemented in Rust"
+license = "MIT/Apache-2.0"
+homepage = "https://github.com/async-graphql/graphgate"
+repository = "https://github.com/async-graphql/graphgate"
+keywords = ["gateway", "graphql", "federation"]
+
+[dependencies]
+actix-web = "4.0.1"
+graphgate-planner = {path = "../planner"}

@@ -12,5 +12,5 @@ pub use plan::{
     IntrospectionSelectionSet, ParallelNode, PathSegment, PlanNode, ResponsePath, RootNode,
     SequenceNode, SubscribeNode,
 };
-pub use request::Request;
+pub use request::{RequestData, Request};
 pub use response::{ErrorPath, Response, ServerError};

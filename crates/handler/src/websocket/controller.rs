@@ -5,7 +5,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
-use graphgate_planner::{Request, Response};
+use graphgate_planner::{Request, RequestData, Response};
 use http::{HeaderMap, Request as HttpRequest};
 use tokio::net::TcpStream;
 use tokio::sync::{mpsc, oneshot};
@@ -13,6 +13,7 @@ use tokio::time::Duration;
 use tokio_tungstenite::tungstenite::protocol::CloseFrame;
 use tokio_tungstenite::tungstenite::{Message, Result as WsResult};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
+use datasource::RemoteGraphQLDataSource;
 
 use super::grouped_stream::{GroupedStream, StreamEvent};
 use super::protocol::{ClientMessage, Protocols, ServerMessage};
@@ -44,8 +45,8 @@ pub struct WebSocketController {
 }
 
 impl WebSocketController {
-    pub fn new(
-        route_table: Arc<ServiceRouteTable>,
+    pub fn new<S: RemoteGraphQLDataSource>(
+        route_table: Arc<ServiceRouteTable<S>>,
         header_map: &HeaderMap,
         init_payload: Option<serde_json::Value>,
     ) -> Self {
@@ -108,8 +109,8 @@ struct SubscribeInfo {
     tx: mpsc::UnboundedSender<Response>,
 }
 
-struct WebSocketContext {
-    route_table: Arc<ServiceRouteTable>,
+struct WebSocketContext<S: RemoteGraphQLDataSource> {
+    route_table: Arc<ServiceRouteTable<S>>,
     header_map: HeaderMap,
     init_payload: Option<serde_json::Value>,
     upstream: GroupedStream<String, SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>>,
@@ -118,7 +119,7 @@ struct WebSocketContext {
     subscribes: HashMap<String, SubscribeInfo>,
 }
 
-impl WebSocketContext {
+impl<S: RemoteGraphQLDataSource> WebSocketContext<S> {
     pub async fn main(mut self) {
         loop {
             tokio::select! {
@@ -151,15 +152,8 @@ impl WebSocketContext {
         let route = self.route_table.get(service).ok_or_else(|| {
             anyhow::anyhow!("Service '{}' is not defined in the routing table.", service)
         })?;
-        let scheme = match route.tls {
-            true => "wss",
-            false => "ws",
-        };
 
-        let url = match &route.websocket_path {
-            Some(path) => format!("{}://{}{}", scheme, route.addr, path),
-            None => format!("{}://{}", scheme, route.addr),
-        };
+        let url = route.address().to_string();
 
         tracing::debug!(url = %url, service = service, "Connect to upstream websocket");
         let mut http_request = HttpRequest::builder()

@@ -8,14 +8,14 @@ pub struct Metrics {
 }
 
 pub static METRICS: Lazy<Metrics> = Lazy::new(|| {
-    let meter = global::meter("graphgate");
+    let meter = global::meter("graphql-gateway");
     let query_counter = meter
-        .u64_counter("graphgate.queries_total")
+        .u64_counter("graphql-gateway.queries_total")
         .with_description("Total number of GraphQL queries executed")
         .init()
         .bind(&[]);
     let query_histogram = meter
-        .f64_value_recorder("graphgate.graphql_query_duration_seconds")
+        .f64_value_recorder("graphql-gateway.graphql_query_duration_seconds")
         .with_description("The GraphQL query latencies in seconds.")
         .init()
         .bind(&[]);

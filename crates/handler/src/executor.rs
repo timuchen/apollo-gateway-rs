@@ -4,11 +4,8 @@ use chrono::{DateTime, Duration, Utc};
 use futures_util::future::BoxFuture;
 use futures_util::stream::BoxStream;
 use futures_util::StreamExt;
-use graphgate_planner::{
-    FetchNode, FlattenNode, IntrospectionNode, ParallelNode, PathSegment, PlanNode, ResponsePath,
-    RootNode, SequenceNode, SubscribeNode,
-};
-use graphgate_planner::{Request, Response, ServerError};
+use graphgate_planner::{FetchNode, FlattenNode, IntrospectionNode, ParallelNode, PathSegment, PlanNode, Request, ResponsePath, RootNode, SequenceNode, SubscribeNode};
+use graphgate_planner::{RequestData, Response, ServerError};
 use graphgate_schema::ComposedSchema;
 use indexmap::IndexMap;
 use opentelemetry::trace::{FutureExt, TraceContextExt, Tracer};
@@ -73,9 +70,9 @@ impl<'e> Executor<'e> {
                 yield self.resp.into_inner();
             }),
             RootNode::Subscribe(SubscribeNode {
-                subscribe_nodes,
-                flatten_node,
-            }) => {
+                                    subscribe_nodes,
+                                    flatten_node,
+                                }) => {
                 let tracer = global::tracer("graphql");
                 let span = tracer.start("subscribe");
                 let cx = Context::current_with_span(span);
@@ -102,34 +99,37 @@ impl<'e> Executor<'e> {
                                 .subscribe(
                                     id,
                                     node.service,
-                                    Request::new(node.query.to_string())
-                                        .variables(node.variables.to_variables()),
+                                    Request {
+                                        data: RequestData::new(node.query.to_string())
+                                            .variables(node.variables.to_variables()),
+                                        headers: HashMap::new(),
+                                    },
                                     tx.clone(),
                                 )
                                 .with_context(cx)
                         }))
-                        .await
-                        .map(move |_| rx)
-                        .map_err(|err| {
-                            Context::current().span().add_event(
-                                "Failed to subscribe".to_string(),
-                                vec![KEY_ERROR.string(err.to_string())],
-                            );
-                            Response {
-                                data: ConstValue::Null,
-                                errors: vec![ServerError {
-                                    message: err.to_string(),
-                                    path: Default::default(),
-                                    locations: Default::default(),
+                            .await
+                            .map(move |_| rx)
+                            .map_err(|err| {
+                                Context::current().span().add_event(
+                                    "Failed to subscribe".to_string(),
+                                    vec![KEY_ERROR.string(err.to_string())],
+                                );
+                                Response {
+                                    data: ConstValue::Null,
+                                    errors: vec![ServerError {
+                                        message: err.to_string(),
+                                        path: Default::default(),
+                                        locations: Default::default(),
+                                        extensions: Default::default(),
+                                    }],
                                     extensions: Default::default(),
-                                }],
-                                extensions: Default::default(),
-                                headers: Default::default(),
-                            }
-                        })
+                                    headers: Default::default(),
+                                }
+                            })
                     }
-                    .with_context(cx.clone())
-                    .await
+                        .with_context(cx.clone())
+                        .await
                 };
 
                 match res {
@@ -190,7 +190,7 @@ impl<'e> Executor<'e> {
                 .iter()
                 .map(|node| async move { self.execute_node(fetcher, node).await }),
         )
-        .await;
+            .await;
     }
 
     async fn execute_introspection_node(&self, introspection: &IntrospectionNode) {
@@ -212,7 +212,7 @@ impl<'e> Executor<'e> {
             ])
             .start(&tracer);
         let cx = Context::current_with_span(span);
-
+        let request = Request { headers: HashMap::new(), data: request };
         async move {
             let res = fetcher.query(fetch.service, request).await;
             let mut current_resp = self.resp.lock().await;
@@ -235,8 +235,8 @@ impl<'e> Executor<'e> {
                 }),
             }
         }
-        .with_context(cx)
-        .await
+            .with_context(cx)
+            .await
     }
 
     async fn execute_flatten_node(&self, fetcher: &impl Fetcher, flatten: &FlattenNode<'_>) {
@@ -326,8 +326,8 @@ impl<'e> Executor<'e> {
                         }
                     }
                     ConstValue::Object(object) if segment.is_list => {
-                        if let Some(ConstValue::List(array)) = object.get_mut(segment.name) {
-                            for element in array {
+                        if let Some(ConstValue::List(ref mut array)) = object.get_mut(segment.name) {
+                            for element in array.iter_mut() {
                                 get_representations(representations, element, &path[1..], prefix);
                             }
                         } else {
@@ -342,8 +342,8 @@ impl<'e> Executor<'e> {
         fn flatten_values(
             target: &mut ConstValue,
             path: &[PathSegment<'_>],
-            values: &mut impl Iterator<Item = ConstValue>,
-            flags: &mut impl Iterator<Item = bool>,
+            values: &mut impl Iterator<Item=ConstValue>,
+            flags: &mut impl Iterator<Item=bool>,
         ) {
             let segment = match path.get(0) {
                 Some(segment) => segment,
@@ -362,8 +362,8 @@ impl<'e> Executor<'e> {
                         }
                     }
                     ConstValue::Object(object) if segment.is_list => {
-                        if let Some(ConstValue::List(array)) = object.get_mut(segment.name) {
-                            for element in array {
+                        if let Some(ConstValue::List(ref mut array)) = object.get_mut(segment.name) {
+                            for element in array.iter_mut() {
                                 if let Some(true) = flags.next() {
                                     if let Some(value) = values.next() {
                                         merge_data(element, value);
@@ -382,8 +382,8 @@ impl<'e> Executor<'e> {
                         }
                     }
                     ConstValue::Object(object) if segment.is_list => {
-                        if let Some(ConstValue::List(array)) = object.get_mut(segment.name) {
-                            for element in array {
+                        if let Some(ConstValue::List(ref mut array)) = object.get_mut(segment.name) {
+                            for element in array.iter_mut() {
                                 flatten_values(element, &path[1..], values, flags);
                             }
                         }
@@ -438,7 +438,7 @@ impl<'e> Executor<'e> {
         let cx = Context::current_with_span(span);
 
         async move {
-            let res = fetcher.query(flatten.service, request).await;
+            let res = fetcher.query(flatten.service, Request {data: request, headers: HashMap::new()}).await;
             let current_resp = &mut self.resp.lock().await;
 
             match res {
@@ -469,8 +469,8 @@ impl<'e> Executor<'e> {
                 }
             }
         }
-        .with_context(cx)
-        .await
+            .with_context(cx)
+            .await
     }
 }
 
@@ -488,12 +488,12 @@ fn merge_data(target: &mut ConstValue, value: ConstValue) {
             }
         }
         (ConstValue::List(array), ConstValue::List(fragment_array))
-            if array.len() == fragment_array.len() =>
-        {
-            for (idx, element) in fragment_array.into_iter().enumerate() {
-                merge_data(&mut array[idx], element);
+        if array.len() == fragment_array.len() =>
+            {
+                for (idx, element) in fragment_array.into_iter().enumerate() {
+                    merge_data(&mut array[idx], element);
+                }
             }
-        }
         _ => {}
     }
 }
@@ -567,8 +567,8 @@ fn add_tracing_spans(response: &mut Response) {
     }
 
     fn deserialize_path<'de, D>(deserialize: D) -> Result<Path, D::Error>
-    where
-        D: Deserializer<'de>,
+        where
+            D: Deserializer<'de>,
     {
         let segments = Vec::<ConstValue>::deserialize(deserialize)?;
 

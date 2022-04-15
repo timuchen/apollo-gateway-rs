@@ -6,7 +6,7 @@ use serde::{Serialize, Serializer};
 use value::{ConstValue, Name, Variables};
 
 use crate::types::{FetchQuery, VariablesRef};
-use crate::Request;
+use crate::RequestData;
 
 #[derive(Debug, Serialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
@@ -140,8 +140,8 @@ pub struct FetchNode<'a> {
 }
 
 impl<'a> FetchNode<'a> {
-    pub fn to_request(&self) -> Request {
-        Request::new(self.query.to_string()).variables(self.variables.to_variables())
+    pub fn to_request(&self) -> RequestData {
+        RequestData::new(self.query.to_string()).variables(self.variables.to_variables())
     }
 }
 
@@ -157,8 +157,8 @@ pub struct FlattenNode<'a> {
 }
 
 impl<'a> FlattenNode<'a> {
-    pub fn to_request(&self, representations: Variables) -> Request {
-        Request::new(self.query.to_string())
+    pub fn to_request(&self, representations: Variables) -> RequestData {
+        RequestData::new(self.query.to_string())
             .variables(representations)
             .extend_variables(self.variables.to_variables())
     }

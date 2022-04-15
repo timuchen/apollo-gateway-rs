@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{Context, Error, Result};
-use graphgate_planner::{PlanBuilder, Request, Response, ServerError};
+use graphgate_planner::{PlanBuilder, Request, RequestData, Response, ServerError};
 use graphgate_schema::ComposedSchema;
 use http::{header::HeaderName, HeaderValue};
 use opentelemetry::trace::{TraceContextExt, Tracer};
@@ -11,28 +11,29 @@ use tokio::sync::{mpsc, RwLock};
 use tokio::time::{Duration, Instant};
 use value::ConstValue;
 use warp::http::{HeaderMap, Response as HttpResponse, StatusCode};
+use datasource::RemoteGraphQLDataSource;
 
 use crate::executor::Executor;
 use crate::fetcher::HttpFetcher;
 use crate::service_route::ServiceRouteTable;
 
-enum Command {
-    Change(ServiceRouteTable),
+enum Command<S: RemoteGraphQLDataSource> {
+    Change(ServiceRouteTable<S>),
 }
 
-struct Inner {
+struct Inner<S: RemoteGraphQLDataSource> {
     schema: Option<Arc<ComposedSchema>>,
-    route_table: Option<Arc<ServiceRouteTable>>,
+    route_table: Option<Arc<ServiceRouteTable<S>>>,
 }
 
 #[derive(Clone)]
-pub struct SharedRouteTable {
-    inner: Arc<RwLock<Inner>>,
-    tx: mpsc::UnboundedSender<Command>,
+pub struct SharedRouteTable<S: RemoteGraphQLDataSource> {
+    inner: Arc<RwLock<Inner<S>>>,
+    tx: mpsc::UnboundedSender<Command<S>>,
     receive_headers: Vec<String>,
 }
 
-impl Default for SharedRouteTable {
+impl<S: RemoteGraphQLDataSource> Default for SharedRouteTable<S> {
     fn default() -> Self {
         let (tx, rx) = mpsc::unbounded_channel();
         let shared_route_table = Self {
@@ -51,8 +52,8 @@ impl Default for SharedRouteTable {
     }
 }
 
-impl SharedRouteTable {
-    async fn update_loop(self, mut rx: mpsc::UnboundedReceiver<Command>) {
+impl<S: RemoteGraphQLDataSource> SharedRouteTable<S> {
+    async fn update_loop(self, mut rx: mpsc::UnboundedReceiver<Command<S>>) {
         let mut update_interval = tokio::time::interval_at(
             Instant::now() + Duration::from_secs(3),
             Duration::from_secs(30),
@@ -103,7 +104,7 @@ impl SharedRouteTable {
             let route_table = route_table.clone();
             async move {
                 let resp = route_table
-                    .query(service, Request::new(QUERY_SDL), None, Some(true))
+                    .get_schema(service, RequestData::new(QUERY_SDL))
                     .await
                     .with_context(|| format!("Failed to fetch SDL from '{}'.", service))?;
                 let resp: ResponseQuery =
@@ -120,7 +121,7 @@ impl SharedRouteTable {
         Ok(())
     }
 
-    pub fn set_route_table(&self, route_table: ServiceRouteTable) {
+    pub fn set_route_table(&self, route_table: ServiceRouteTable<S>) {
         self.tx.send(Command::Change(route_table)).ok();
     }
 
@@ -128,7 +129,7 @@ impl SharedRouteTable {
         self.receive_headers = receive_headers;
     }
 
-    pub async fn get(&self) -> Option<(Arc<ComposedSchema>, Arc<ServiceRouteTable>)> {
+    pub async fn get(&self) -> Option<(Arc<ComposedSchema>, Arc<ServiceRouteTable<S>>)> {
         let (composed_schema, route_table) = {
             let inner = self.inner.read().await;
             (inner.schema.clone(), inner.route_table.clone())
@@ -136,10 +137,10 @@ impl SharedRouteTable {
         composed_schema.zip(route_table)
     }
 
-    pub async fn query(&self, request: Request, header_map: HeaderMap) -> HttpResponse<String> {
+    pub async fn query(&self, request: Request, ctx: datasource::Context) -> HttpResponse<String> {
         let tracer = global::tracer("graphql");
 
-        let document = match tracer.in_span("parse", |_| parser::parse_query(&request.query)) {
+        let document = match tracer.in_span("parse", |_| parser::parse_query(&request.data.query)) {
             Ok(document) => document,
             Err(err) => {
                 return HttpResponse::builder()
@@ -168,8 +169,9 @@ impl SharedRouteTable {
         };
 
         let mut plan_builder =
-            PlanBuilder::new(&composed_schema, document).variables(request.variables);
-        if let Some(operation) = request.operation {
+            PlanBuilder::new(&composed_schema, document).variables(request.data.variables);
+
+        if let Some(operation) = request.data.operation {
             plan_builder = plan_builder.operation_name(operation);
         }
 
@@ -183,39 +185,15 @@ impl SharedRouteTable {
             }
         };
 
+
+
         let executor = Executor::new(&composed_schema);
         let resp = opentelemetry::trace::FutureExt::with_context(
-            executor.execute_query(&HttpFetcher::new(&*route_table, &header_map), &plan),
+            executor.execute_query(&HttpFetcher::new(&*route_table, ctx), &plan),
             OpenTelemetryContext::current_with_span(tracer.span_builder("execute").start(&tracer)),
         )
         .await;
-
-        let mut builder = HttpResponse::builder().status(StatusCode::OK);
-
-        let mut header_map = HeaderMap::new();
-
-        match resp.headers.clone() {
-            Some(x) => {
-                for (k, v) in x
-                    .into_iter()
-                    .filter(|(k, _v)| self.receive_headers.contains(k))
-                {
-                    for val in v {
-                        header_map.append(
-                            HeaderName::from_bytes(k.as_bytes()).unwrap(),
-                            HeaderValue::from_str(&val).unwrap(),
-                        );
-                    }
-                }
-            }
-            _ => {}
-        }
-
-        match builder.headers_mut() {
-            Some(x) => x.extend(header_map),
-            None => {}
-        }
-
+        let builder = HttpResponse::builder().status(StatusCode::OK);
         builder.body(serde_json::to_string(&resp).unwrap()).unwrap()
     }
 }
