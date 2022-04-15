@@ -59,7 +59,7 @@ impl<Source: RemoteGraphQLDataSource> ServiceRouteTable<Source> {
 
         let raw_resp = HTTP_CLIENT
             .post(&url)
-            .json(&request)
+            .json(&request.data)
             .send()
             .and_then(|res| async move { res.error_for_status() })
             .await?;

@@ -28,8 +28,6 @@ impl<Source: RemoteGraphQLDataSource> GatewayServer<Source> {
 
 
 pub mod macros {
-    use actix_web::HttpResponse;
-    use async_graphql::http::{GraphQLPlaygroundConfig, playground_source};
     #[macro_export]
     macro_rules! configure {
         ( $ configure_method_name: ident, $ t: ident) => {
