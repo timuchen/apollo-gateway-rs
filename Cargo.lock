@@ -1136,7 +1136,7 @@ dependencies = [
 
 [[package]]
 name = "graphql-gateway"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "actix-identity",
  "actix-web",
