@@ -68,7 +68,13 @@ impl<Source: RemoteGraphQLDataSource> ServiceRouteTable<Source> {
             .and_then(|res| async move { res.error_for_status() })
             .await?;
 
-        let resp = raw_resp.json::<Response>().await?;
+        let headers = raw_resp.headers().iter()
+            .filter_map(|(name, value)| value.to_str().ok().map(|value| (name.as_str().to_string(), value.to_string())))
+            .collect();
+
+        let mut resp = raw_resp.json::<Response>().await?;
+
+        resp.headers = headers;
 
         source.did_receive_response(&resp, &ctx);
 
