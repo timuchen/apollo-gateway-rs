@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
@@ -57,8 +58,11 @@ impl<Source: RemoteGraphQLDataSource> ServiceRouteTable<Source> {
 
         source.will_send_request(&mut request, ctx);
 
+        let headers = HeaderMap::try_from(&request.headers)?;
+
         let raw_resp = HTTP_CLIENT
             .post(&url)
+            .headers(headers)
             .json(&request.data)
             .send()
             .and_then(|res| async move { res.error_for_status() })

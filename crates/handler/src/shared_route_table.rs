@@ -137,34 +137,27 @@ impl<S: RemoteGraphQLDataSource> SharedRouteTable<S> {
         composed_schema.zip(route_table)
     }
 
-    pub async fn query(&self, request: Request, ctx: datasource::Context) -> HttpResponse<String> {
+    pub async fn query(&self, request: Request, ctx: datasource::Context) -> String {
         let tracer = global::tracer("graphql");
 
         let document = match tracer.in_span("parse", |_| parser::parse_query(&request.data.query)) {
             Ok(document) => document,
             Err(err) => {
-                return HttpResponse::builder()
-                    .status(StatusCode::BAD_REQUEST)
-                    .body(err.to_string())
-                    .unwrap();
+                return err.to_string()
             }
         };
 
         let (composed_schema, route_table) = match self.get().await {
             Some((composed_schema, route_table)) => (composed_schema, route_table),
             _ => {
-                return HttpResponse::builder()
-                    .status(StatusCode::BAD_REQUEST)
-                    .body(
+                return
                         serde_json::to_string(&Response {
                             data: ConstValue::Null,
                             errors: vec![ServerError::new("Not ready.")],
                             extensions: Default::default(),
                             headers: Default::default(),
                         })
-                        .unwrap(),
-                    )
-                    .unwrap();
+                        .unwrap()
             }
         };
 
@@ -178,14 +171,9 @@ impl<S: RemoteGraphQLDataSource> SharedRouteTable<S> {
         let plan = match tracer.in_span("plan", |_| plan_builder.plan()) {
             Ok(plan) => plan,
             Err(response) => {
-                return HttpResponse::builder()
-                    .status(StatusCode::OK)
-                    .body(serde_json::to_string(&response).unwrap())
-                    .unwrap();
+                return serde_json::to_string(&response).unwrap();
             }
         };
-
-
 
         let executor = Executor::new(&composed_schema);
         let resp = opentelemetry::trace::FutureExt::with_context(
@@ -193,8 +181,7 @@ impl<S: RemoteGraphQLDataSource> SharedRouteTable<S> {
             OpenTelemetryContext::current_with_span(tracer.span_builder("execute").start(&tracer)),
         )
         .await;
-        let builder = HttpResponse::builder().status(StatusCode::OK);
         let response =  serde_json::to_string(&resp).unwrap();
-        builder.body(response).unwrap()
+        response
     }
 }

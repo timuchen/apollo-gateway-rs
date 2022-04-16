@@ -81,7 +81,7 @@ pub mod actix {
                 .start(&tracer),
         );
         let response = config.table.query(request, ctx).with_context(query).await;
-        HttpResponse::Ok().body(response.into_body())
+        HttpResponse::Ok().body(response)
     }
     #[actix_web::get("/")]
     pub async fn playground() -> HttpResponse {
