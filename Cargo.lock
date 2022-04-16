@@ -1072,7 +1072,7 @@ dependencies = [
 
 [[package]]
 name = "graphgate-handler"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "actix-web",
  "anyhow",
@@ -1101,7 +1101,7 @@ dependencies = [
 
 [[package]]
 name = "graphgate-planner"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
