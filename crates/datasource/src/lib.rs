@@ -14,6 +14,7 @@ pub trait RemoteGraphQLDataSource : Sync + Send + 'static + Clone + Default {
 
 pub struct Context {
     pub request: HttpRequest,
+    pub response: HttpResponse
 }
 
 impl Deref for Context {

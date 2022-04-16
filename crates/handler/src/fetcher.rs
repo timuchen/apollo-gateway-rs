@@ -17,7 +17,7 @@ pub trait Fetcher: Send + Sync {
 
 pub struct HttpFetcher<'a, S: RemoteGraphQLDataSource> {
     router_table: &'a ServiceRouteTable<S>,
-    ctx: Context
+    pub ctx: Context
 }
 
 impl<'a, S: RemoteGraphQLDataSource> HttpFetcher<'a, S> {

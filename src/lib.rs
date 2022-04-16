@@ -69,7 +69,8 @@ pub mod actix {
             headers: HashMap::new(),
             data: query,
         };
-        let ctx = Context { request: req };
+        let response = HttpResponse::Ok().await.unwrap();
+        let ctx = Context { request: req, response};
         let tracer = opentelemetry::global::tracer("graphql");
         let query = opentelemetry::Context::current_with_span(
             tracer
@@ -80,8 +81,7 @@ pub mod actix {
                 ])
                 .start(&tracer),
         );
-        let response = config.table.query(request, ctx).with_context(query).await;
-        HttpResponse::Ok().body(response)
+        config.table.query(request, ctx).with_context(query).await
     }
     #[actix_web::get("/")]
     pub async fn playground() -> HttpResponse {
