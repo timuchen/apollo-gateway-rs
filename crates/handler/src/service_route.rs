@@ -70,8 +70,6 @@ impl<Source: RemoteGraphQLDataSource> ServiceRouteTable<Source> {
 
         let resp = raw_resp.json::<Response>().await?;
 
-        tracing::info!("{:?}", resp);
-
         source.did_receive_response(&resp, &ctx);
 
         Ok(resp)
