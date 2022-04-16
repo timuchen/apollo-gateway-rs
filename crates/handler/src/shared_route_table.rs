@@ -106,6 +106,7 @@ impl<S: RemoteGraphQLDataSource> SharedRouteTable<S> {
                 let resp = route_table
                     .get_schema(service, RequestData::new(QUERY_SDL))
                     .await
+                    .map_err(|e| { tracing::error!("{e}"); e })
                     .with_context(|| format!("Failed to fetch SDL from '{}'.", service))?;
                 let resp: ResponseQuery =
                     value::from_value(resp.data).context("Failed to parse response.")?;
