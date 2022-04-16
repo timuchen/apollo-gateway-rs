@@ -85,7 +85,6 @@ pub mod actix {
     }
     #[actix_web::get("/")]
     pub async fn playground() -> HttpResponse {
-        tracing::info!("playground");
         let html = playground_source(GraphQLPlaygroundConfig::new("/"));
         HttpResponse::Ok()
             .content_type("text/html; charset=utf-8")
