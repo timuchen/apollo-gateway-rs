@@ -95,7 +95,6 @@ pub mod actix {
         req: actix_web::HttpRequest,
         payload: actix_web::web::Payload,
     ) -> HttpResponse {
-        tracing::info!("subscription");
         let ctx = Context::new(req.clone());
         let protocols = req.headers().get(SEC_WEBSOCKET_PROTOCOL).and_then(|header| header.to_str().ok());
         let protocol = protocols
@@ -103,9 +102,13 @@ pub mod actix {
                 protocols.split(',').find_map(|p| Protocols::from_str(p.trim()).ok())
             })
             .unwrap_or(Protocols::SubscriptionsTransportWS);
+        tracing::info!("{:?}", protocol);
         if let Some((composed_schema, route_table)) = server.table.get().await {
+            let protocols = [protocol.sec_websocket_protocol()];
             let subscription = Subscription::new(composed_schema, route_table, ctx, protocol);
-            return match actix_web_actors::ws::start(subscription, &req, payload) {
+            return match actix_web_actors::ws::WsResponseBuilder::new(subscription, &req, payload)
+                .protocols(&protocols)
+                .start() {
                 Ok(r) => r,
                 Err(e) => HttpResponse::InternalServerError().body(e.to_string())
             };
