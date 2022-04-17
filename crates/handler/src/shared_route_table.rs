@@ -140,10 +140,10 @@ impl<S: RemoteGraphQLDataSource> SharedRouteTable<S> {
         composed_schema.zip(route_table)
     }
 
-    pub async fn query(&self, request: Request, ctx: datasource::Context) -> HttpResponse {
+    pub async fn query(&self, request: RequestData, ctx: datasource::Context) -> HttpResponse {
         let tracer = global::tracer("graphql");
 
-        let document = match tracer.in_span("parse", |_| parser::parse_query(&request.data.query)) {
+        let document = match tracer.in_span("parse", |_| parser::parse_query(&request.query)) {
             Ok(document) => document,
             Err(err) => {
                 return  HttpResponse::BadRequest().body(err.to_string())
@@ -166,9 +166,9 @@ impl<S: RemoteGraphQLDataSource> SharedRouteTable<S> {
         };
 
         let mut plan_builder =
-            PlanBuilder::new(&composed_schema, document).variables(request.data.variables);
+            PlanBuilder::new(&composed_schema, document).variables(request.variables);
 
-        if let Some(operation) = request.data.operation {
+        if let Some(operation) = request.operation {
             plan_builder = plan_builder.operation_name(operation);
         }
 
@@ -186,10 +186,7 @@ impl<S: RemoteGraphQLDataSource> SharedRouteTable<S> {
             OpenTelemetryContext::current_with_span(tracer.span_builder("execute").start(&tracer)),
         )
         .await;
-        let http_response = fetcher.ctx.response;
         let response =  serde_json::to_string(&resp).unwrap();
-        let bytes = response.as_bytes().to_vec();
-        let body = BoxBody::new(bytes);
-        http_response.set_body(body)
+        HttpResponse::Ok().body(response)
     }
 }

@@ -1,5 +1,7 @@
 use std::fmt::Debug;
+use std::future::Future;
 use std::ops::Deref;
+use std::pin::Pin;
 use std::sync::Arc;
 use actix_web::{HttpRequest, HttpResponse};
 use graphgate_planner::{Request, Response};
@@ -7,14 +9,22 @@ use graphgate_planner::{Request, Response};
 pub trait RemoteGraphQLDataSource : Sync + Send + 'static + Clone + Default {
     fn name(&self) -> &str;
     fn address(&self) -> &str;
-    fn will_send_request(&self, request: &mut Request, ctx: &Context) {}
-    fn did_receive_response(&self, response: &Response, ctx: &Context) {}
+    type Future: Future + Send;
+    fn will_send_request(&self, request: &mut Request, ctx: &Context) -> Self::Future;
+    fn did_receive_response(&self, response: &Response, ctx: &Context) -> Self::Future;
 }
 
 
 pub struct Context {
-    pub request: HttpRequest,
-    pub response: HttpResponse
+    request: HttpRequest,
+}
+
+impl Context {
+    pub fn new(request: HttpRequest) -> Self {
+        Self {
+            request
+        }
+    }
 }
 
 impl Deref for Context {

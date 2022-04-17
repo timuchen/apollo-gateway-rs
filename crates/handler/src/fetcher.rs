@@ -12,7 +12,7 @@ use crate::ServiceRouteTable;
 
 #[async_trait::async_trait]
 pub trait Fetcher: Send + Sync {
-    async fn query(&self, service: &str, request: Request) -> Result<Response>;
+    async fn query(&self, service: &str, request: RequestData) -> Result<Response>;
 }
 
 pub struct HttpFetcher<'a, S: RemoteGraphQLDataSource> {
@@ -31,7 +31,7 @@ impl<'a, S: RemoteGraphQLDataSource> HttpFetcher<'a, S> {
 
 #[async_trait::async_trait]
 impl<'a, S: RemoteGraphQLDataSource> Fetcher for HttpFetcher<'a, S> {
-    async fn query(&self, service: &str, request: Request) -> Result<Response> {
+    async fn query(&self, service: &str, request: RequestData) -> Result<Response> {
         self.router_table
             .query(service, request, &self.ctx)
             .await
@@ -54,7 +54,7 @@ impl WebSocketFetcher {
 
 #[async_trait::async_trait]
 impl Fetcher for WebSocketFetcher {
-    async fn query(&self, service: &str, request: Request) -> Result<Response> {
+    async fn query(&self, service: &str, request: RequestData) -> Result<Response> {
         let id = self.id.fetch_add(1, Ordering::Relaxed);
         let (tx, mut rx) = mpsc::unbounded_channel();
         self.controller

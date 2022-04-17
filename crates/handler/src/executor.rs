@@ -99,11 +99,8 @@ impl<'e> Executor<'e> {
                                 .subscribe(
                                     id,
                                     node.service,
-                                    Request {
-                                        data: RequestData::new(node.query.to_string())
+                                    RequestData::new(node.query.to_string())
                                             .variables(node.variables.to_variables()),
-                                        headers: HashMap::new(),
-                                    },
                                     tx.clone(),
                                 )
                                 .with_context(cx)
@@ -212,7 +209,6 @@ impl<'e> Executor<'e> {
             ])
             .start(&tracer);
         let cx = Context::current_with_span(span);
-        let request = Request { headers: HashMap::new(), data: request };
         async move {
             let res = fetcher.query(fetch.service, request).await;
             let mut current_resp = self.resp.lock().await;
@@ -438,7 +434,7 @@ impl<'e> Executor<'e> {
         let cx = Context::current_with_span(span);
 
         async move {
-            let res = fetcher.query(flatten.service, Request {data: request, headers: HashMap::new()}).await;
+            let res = fetcher.query(flatten.service,  request).await;
             let current_resp = &mut self.resp.lock().await;
 
             match res {

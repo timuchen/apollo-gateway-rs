@@ -64,7 +64,7 @@ pub async fn server<S: RemoteGraphQLDataSource>(
                         }
                         ClientMessage::Start { id, payload } | ClientMessage::Subscribe { id, payload } => {
                             let controller = controller.get_or_insert_with(|| WebSocketController::new(route_table.clone(), &header_map, None)).clone();
-                            let document = match parser::parse_query(&payload.data.query) {
+                            let document = match parser::parse_query(&payload.query) {
                                 Ok(document) => document,
                                 Err(err) => {
                                     let resp = Response {
@@ -87,7 +87,7 @@ pub async fn server<S: RemoteGraphQLDataSource>(
                             let stream = {
                                 let id = id.clone();
                                 async_stream::stream! {
-                                    let builder = PlanBuilder::new(&schema, document).variables(payload.data.variables);
+                                    let builder = PlanBuilder::new(&schema, document).variables(payload.variables);
                                     let node = match builder.plan() {
                                         Ok(node) => node,
                                         Err(resp) => {

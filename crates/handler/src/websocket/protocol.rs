@@ -33,7 +33,7 @@ impl Protocols {
     }
 
     #[inline]
-    pub fn subscribe_message<'a>(&self, id: &'a str, request: Request) -> ClientMessage<'a> {
+    pub fn subscribe_message<'a>(&self, id: &'a str, request: RequestData) -> ClientMessage<'a> {
         match self {
             Protocols::SubscriptionsTransportWS => ClientMessage::Start {
                 id,
@@ -60,8 +60,8 @@ impl Protocols {
 #[allow(dead_code)]
 pub enum ClientMessage<'a> {
     ConnectionInit { payload: Option<serde_json::Value> },
-    Start { id: &'a str, payload: Request },
-    Subscribe { id: &'a str, payload: Request },
+    Start { id: &'a str, payload: RequestData },
+    Subscribe { id: &'a str, payload: RequestData },
     Stop { id: &'a str },
     Complete { id: &'a str },
     ConnectionTerminate,

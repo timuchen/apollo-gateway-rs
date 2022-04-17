@@ -64,20 +64,16 @@ pub mod actix {
         request: actix_web::web::Json<RequestData>,
         req: actix_web::HttpRequest,
     ) -> HttpResponse {
-        let query = request.into_inner();
-        let request = Request {
-            headers: HashMap::new(),
-            data: query,
-        };
+        let request = request.into_inner();
         let response = HttpResponse::Ok().await.unwrap();
-        let ctx = Context { request: req, response};
+        let ctx = Context::new(req);
         let tracer = opentelemetry::global::tracer("graphql");
         let query = opentelemetry::Context::current_with_span(
             tracer
                 .span_builder("query")
                 .with_attributes(vec![
-                    KEY_QUERY.string(request.data.query.clone()),
-                    KEY_VARIABLES.string(serde_json::to_string(&request.data.variables).unwrap()),
+                    KEY_QUERY.string(request.query.clone()),
+                    KEY_VARIABLES.string(serde_json::to_string(&request.variables).unwrap()),
                 ])
                 .start(&tracer),
         );

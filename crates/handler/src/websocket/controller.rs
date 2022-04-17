@@ -25,7 +25,7 @@ const CONNECT_TIMEOUT_SECONDS: u64 = 5;
 struct SubscribeCommand {
     service: String,
     id: String,
-    payload: Request,
+    payload: RequestData,
     tx: mpsc::UnboundedSender<Response>,
     reply: oneshot::Sender<Result<()>>,
 }
@@ -69,7 +69,7 @@ impl WebSocketController {
         &self,
         id: impl Into<String>,
         service: impl Into<String>,
-        request: Request,
+        request: RequestData,
         tx: mpsc::UnboundedSender<Response>,
     ) -> Result<()> {
         let (tx_reply, rx_reply) = oneshot::channel();
