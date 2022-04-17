@@ -2,6 +2,7 @@
 
 pub use service_route::{ServiceRouteTable};
 pub use shared_route_table::SharedRouteTable;
+pub use websocket::{Subscription, Protocols};
 
 pub mod constants;
 mod executor;

@@ -1,12 +1,8 @@
-
 pub use datasource::{RemoteGraphQLDataSource, Context};
 pub use graphgate_planner::{RequestData, Request, Response};
 use graphgate_handler::{ServiceRouteTable, SharedRouteTable};
 use std::collections::HashMap;
 use std::iter::FromIterator;
-
-
-
 
 
 pub struct GatewayServer<Source: RemoteGraphQLDataSource> {
@@ -30,32 +26,47 @@ impl<Source: RemoteGraphQLDataSource> GatewayServer<Source> {
 pub mod macros {
     #[macro_export]
     macro_rules! configure {
-        ( $ configure_method_name: ident, $ t: ident) => {
-            #[actix_web::post("/")]
-            async fn graphql_request(
-                server: actix_web::web::Data<GatewayServer<$t>>,
-                request: actix_web::web::Json<graphql_gateway::RequestData>,
-                req: actix_web::HttpRequest,
-            ) -> actix_web::HttpResponse {
-                graphql_gateway::actix::graphql_request(server, request, req).await
-            }
-        fn $configure_method_name(config: &mut actix_web::web::ServiceConfig) {
-            config
-                .service(graphql_request)
-                .service(graphql_gateway::actix::playground);
-            }
-        };
+            ( $configure_method_name: ident, $t: ident) => {
+                async fn graphql_request(
+                    server: actix_web::web::Data<GatewayServer<$t>>,
+                    request: actix_web::web::Json<graphql_gateway::RequestData>,
+                    req: actix_web::HttpRequest,
+                ) -> actix_web::HttpResponse {
+                    graphql_gateway::actix::graphql_request(server, request, req).await
+                }
+                pub async fn graphql_subscription(
+                    server: actix_web::web::Data<GatewayServer<$t>>,
+                    req: actix_web::HttpRequest,
+                    payload: actix_web::web::Payload,
+                ) -> HttpResponse {
+                    graphql_gateway::actix::graphql_subscription(server, req, payload).await
+                }
+            fn $configure_method_name(config: &mut actix_web::web::ServiceConfig) {
+                cfg.service(
+                    web::resource("/")
+                        .route(web::post().to(graphql_request))
+                        .route(
+                            web::get()
+                                .guard(guard::Header("upgrade", "websocket"))
+                                .to(graphql_subscription),
+                        )
+                        .route(web::get().to(graphql_gateway::actix::playground)),
+                );
+            };
+        }
     }
 }
 
 pub mod actix {
-    
+    use std::str::FromStr;
     use actix_web::HttpResponse;
     use async_graphql::http::{GraphQLPlaygroundConfig, playground_source};
     use k8s_openapi::serde_json;
     use opentelemetry::trace::{FutureExt, TraceContextExt, Tracer};
+    use warp::http::header::SEC_WEBSOCKET_PROTOCOL;
     use datasource::{Context, RemoteGraphQLDataSource};
     use graphgate_handler::constants::{KEY_QUERY, KEY_VARIABLES};
+    use graphgate_handler::{Protocols, Subscription};
     use graphgate_planner::{RequestData};
     use crate::GatewayServer;
 
@@ -80,16 +91,24 @@ pub mod actix {
     }
 
     pub async fn graphql_subscription<S: RemoteGraphQLDataSource>(
-        _server: actix_web::web::Data<GatewayServer<S>>,
-        request: actix_web::web::Json<RequestData>,
+        server: actix_web::web::Data<GatewayServer<S>>,
         req: actix_web::HttpRequest,
+        payload: actix_web::web::Payload,
     ) -> HttpResponse {
-        let _request = request.into_inner();
-        let _ctx = Context::new(req);
-        HttpResponse::Ok().finish()
+        let ctx = Context::new(req.clone());
+        let protocols = req.headers().get(SEC_WEBSOCKET_PROTOCOL).unwrap().to_str().ok();
+        let protocol = protocols
+            .and_then(|protocols| {
+                protocols.split(',').find_map(|p| Protocols::from_str(p.trim()).ok())
+            })
+            .unwrap_or(Protocols::SubscriptionsTransportWS);
+        if let Some((composed_schema, route_table)) = server.table.get().await {
+            let subscription = Subscription::new(composed_schema, route_table, ctx, protocol);
+            return actix_web_actors::ws::start(subscription, &req, payload).unwrap();
+        }
+        HttpResponse::InternalServerError().finish()
     }
 
-    #[actix_web::get("/")]
     pub async fn playground() -> HttpResponse {
         let html = playground_source(GraphQLPlaygroundConfig::new("/"));
         HttpResponse::Ok()

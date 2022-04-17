@@ -6,3 +6,4 @@ mod subscription;
 
 pub use controller::WebSocketController;
 pub use protocol::Protocols;
+pub use subscription::Subscription;

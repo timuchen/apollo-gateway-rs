@@ -1,9 +1,27 @@
 /*
+use std::sync::Arc;
+
+use futures_util::sink::Sink;
+use futures_util::stream::Stream;
+use futures_util::{SinkExt, StreamExt};
+use graphgate_planner::{PlanBuilder, Response, ServerError};
+use graphgate_schema::ComposedSchema;
+use value::ConstValue;
+use warp::http::HeaderMap;
+use warp::ws::Message;
+use warp::Error;
+use datasource::RemoteGraphQLDataSource;
+
+use super::controller::WebSocketController;
+use super::grouped_stream::{GroupedStream, StreamEvent};
+use super::protocol::{ClientMessage, ConnectionError, Protocols, ServerMessage};
+use crate::executor::Executor;
+use crate::ServiceRouteTable;
+
 pub async fn server<S: RemoteGraphQLDataSource>(
     schema: Arc<ComposedSchema>,
     route_table: Arc<ServiceRouteTable<S>>,
-    stream: impl Stream<Item = Result<Message, Error>> + Sink<M        http_request.headers_mut().extend(self.header_map.clone());
-essage>,
+    stream: impl Stream<Item = Result<Message, Error>> + Sink<Message>,
     protocol: Protocols,
     header_map: HeaderMap,
 ) {
@@ -82,8 +100,7 @@ essage>,
                                     let mut stream = executor.execute_stream(controller.clone(), &id, &node).await;
                                     while let Some(item) = stream.next().await {
                                         yield item;
-                                    }        http_request.headers_mut().extend(self.header_map.clone());
-
+                                    }
                                 }
                             };
                             streams.insert(id, Box::pin(stream));
