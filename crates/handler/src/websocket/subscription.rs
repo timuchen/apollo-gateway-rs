@@ -1,6 +1,6 @@
 use std::pin::Pin;
 use std::sync::Arc;
-use actix::{Actor, Addr, ArbiterHandle, AsyncContext, ContextFutureSpawner, Handler, Running, SpawnHandle, StreamHandler, WrapFuture};
+use actix::{Actor, ActorContext, Addr, ArbiterHandle, AsyncContext, ContextFutureSpawner, Handler, Running, SpawnHandle, StreamHandler, WrapFuture};
 use actix::dev::Stream;
 use datasource::{Context, RemoteGraphQLDataSource};
 use graphgate_schema::ComposedSchema;
@@ -48,8 +48,10 @@ impl<S: RemoteGraphQLDataSource > Actor for Subscription<S> {
 
 impl<S: RemoteGraphQLDataSource> StreamHandler<Result<ws::Message, ws::ProtocolError>> for Subscription<S> {
     fn handle(&mut self, item: Result<Message, ProtocolError>, ctx: &mut Self::Context) {
-        if let Ok(Message::Binary(bytes)) = item {
-            let client_msg = match serde_json::from_slice::<ClientMessage>(&bytes) {
+        tracing::info!("{:?}", item);
+        if let Ok(Message::Text(ref text)) = item {
+            let bytes = text.as_bytes();
+            let client_msg = match serde_json::from_slice::<ClientMessage>(bytes) {
                 Ok(client_msg) => client_msg,
                 Err(_) => return,
             };
@@ -116,6 +118,9 @@ impl<S: RemoteGraphQLDataSource> StreamHandler<Result<ws::Message, ws::ProtocolE
                 _ => {}
             }
         }
+        if let Ok(Message::Close(_)) | Err(_) = item {
+            ctx.stop();
+        }
     }
 }
 type Event = StreamEvent<Arc<std::string::String>, graphgate_planner::Response>;
@@ -123,6 +128,7 @@ type Event = StreamEvent<Arc<std::string::String>, graphgate_planner::Response>;
 impl<S: RemoteGraphQLDataSource> Handler<Event> for Subscription<S> {
     type Result = ();
     fn handle(&mut self, msg: Event, ctx: &mut Self::Context) -> Self::Result {
+        tracing::info!("{:?}", msg);
         match msg {
             StreamEvent::Data(id, resp) => {
                 let data = self.protocol.next_message(&id, resp);

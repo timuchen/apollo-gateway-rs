@@ -62,6 +62,7 @@ impl<K: Eq + Hash + Clone, S> GroupedStream<K, S> {
     }
 }
 
+#[derive(Debug)]
 pub enum StreamEvent<K, T> {
     Data(K, T),
     Complete(K),
