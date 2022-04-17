@@ -95,6 +95,7 @@ pub mod actix {
         req: actix_web::HttpRequest,
         payload: actix_web::web::Payload,
     ) -> HttpResponse {
+        tracing::info!("subscription");
         let ctx = Context::new(req.clone());
         let protocols = req.headers().get(SEC_WEBSOCKET_PROTOCOL).unwrap().to_str().ok();
         let protocol = protocols
