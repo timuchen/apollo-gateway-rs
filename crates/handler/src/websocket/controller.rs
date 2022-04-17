@@ -47,13 +47,11 @@ pub struct WebSocketController {
 impl WebSocketController {
     pub fn new<S: RemoteGraphQLDataSource>(
         route_table: Arc<ServiceRouteTable<S>>,
-        header_map: &HeaderMap,
         init_payload: Option<serde_json::Value>,
     ) -> Self {
         let (tx_command, rx_command) = mpsc::unbounded_channel();
         let ctx = WebSocketContext {
             route_table,
-            header_map: header_map.clone(),
             init_payload,
             upstream: GroupedStream::default(),
             upstream_info: Default::default(),
@@ -111,7 +109,6 @@ struct SubscribeInfo {
 
 struct WebSocketContext<S: RemoteGraphQLDataSource> {
     route_table: Arc<ServiceRouteTable<S>>,
-    header_map: HeaderMap,
     init_payload: Option<serde_json::Value>,
     upstream: GroupedStream<String, SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>>,
     upstream_info: HashMap<String, UpstreamInfo>,
@@ -161,7 +158,7 @@ impl<S: RemoteGraphQLDataSource> WebSocketContext<S> {
             .header("Sec-WebSocket-Protocol", PROTOCOLS)
             .body(())
             .unwrap();
-        http_request.headers_mut().extend(self.header_map.clone());
+        //http_request.headers_mut().extend(self.header_map.clone());
         let (mut stream, http_response) = tokio_tungstenite::connect_async(http_request).await?;
         let protocol = http_response
             .headers()

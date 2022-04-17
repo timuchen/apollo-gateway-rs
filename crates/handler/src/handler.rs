@@ -1,22 +1,22 @@
-use std::convert::{Infallible, TryInto};
-use std::net::SocketAddr;
-use std::str::FromStr;
-use std::sync::Arc;
+// use std::convert::{Infallible, TryInto};
+// use std::net::SocketAddr;
+// use std::str::FromStr;
+// use std::sync::Arc;
 
-use graphgate_planner::RequestData;
-use http::header::HeaderName;
-use http::HeaderMap;
-use opentelemetry::trace::{FutureExt, TraceContextExt, Tracer};
-use opentelemetry::{global, Context};
-use warp::http::Response as HttpResponse;
-use warp::ws::Ws;
-use warp::{Filter, Rejection, Reply};
+// use graphgate_planner::RequestData;
+// use http::header::HeaderName;
+// use http::HeaderMap;
+// use opentelemetry::trace::{FutureExt, TraceContextExt, Tracer};
+// use opentelemetry::{global, Context};
+// use warp::http::Response as HttpResponse;
+// use warp::ws::Ws;
+// use warp::{Filter, Rejection, Reply};
 
-use crate::constants::*;
-use crate::metrics::METRICS;
-use crate::{websocket, SharedRouteTable};
-use std::time::Instant;
-use datasource::RemoteGraphQLDataSource;
+// use crate::constants::*;
+// use crate::metrics::METRICS;
+// use crate::{websocket, SharedRouteTable};
+// use std::time::Instant;
+// use datasource::RemoteGraphQLDataSource;
 
 // pub fn graphql_websocket<S: RemoteGraphQLDataSource>(
 //     config: HandlerConfig<S>,
@@ -39,7 +39,7 @@ use datasource::RemoteGraphQLDataSource;
 //                     .unwrap_or(websocket::Protocols::SubscriptionsTransportWS);
 //                 let header_map =
 //                     do_forward_headers(&config.forward_headers, &header_map, remote_addr);
-//
+
 //                 let reply = ws.on_upgrade(move |websocket| async move {
 //                     if let Some((composed_schema, route_table)) =
 //                         config.shared_route_table.get().await
@@ -54,7 +54,7 @@ use datasource::RemoteGraphQLDataSource;
 //                         .await;
 //                     }
 //                 });
-//
+
 //                 warp::reply::with_header(
 //                     reply,
 //                     "Sec-WebSocket-Protocol",

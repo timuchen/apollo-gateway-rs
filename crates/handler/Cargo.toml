@@ -14,6 +14,8 @@ graphgate-schema = { version = "0.5.0", path = "../schema" }
 graphgate-planner = { version = "0.6.0", path = "../planner" }
 datasource = {path = "../datasource"}
 actix-web = "4.0.1"
+actix-web-actors = "4.1.0"
+actix = "0.13.0"
 warp = "0.3.2"
 indexmap = { version = "1.8.0", features = ["serde-1"] }
 futures-util = { version = "0.3.19", features = ["sink"] }

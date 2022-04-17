@@ -33,11 +33,11 @@ pub mod macros {
         ( $ configure_method_name: ident, $ t: ident) => {
             #[actix_web::post("/")]
             async fn graphql_request(
-                config: actix_web::web::Data<GatewayServer<$t>>,
+                server: actix_web::web::Data<GatewayServer<$t>>,
                 request: actix_web::web::Json<graphql_gateway::RequestData>,
                 req: actix_web::HttpRequest,
             ) -> actix_web::HttpResponse {
-                graphql_gateway::actix::graphql_request(config, request, req).await
+                graphql_gateway::actix::graphql_request(server, request, req).await
             }
         fn $configure_method_name(config: &mut actix_web::web::ServiceConfig) {
             config
@@ -60,12 +60,11 @@ pub mod actix {
     use crate::GatewayServer;
 
     pub async fn graphql_request<S: RemoteGraphQLDataSource>(
-        config: actix_web::web::Data<GatewayServer<S>>,
+        server: actix_web::web::Data<GatewayServer<S>>,
         request: actix_web::web::Json<RequestData>,
         req: actix_web::HttpRequest,
     ) -> HttpResponse {
         let request = request.into_inner();
-        let response = HttpResponse::Ok().await.unwrap();
         let ctx = Context::new(req);
         let tracer = opentelemetry::global::tracer("graphql");
         let query = opentelemetry::Context::current_with_span(
@@ -77,8 +76,19 @@ pub mod actix {
                 ])
                 .start(&tracer),
         );
-        config.table.query(request, ctx).with_context(query).await
+        server.table.query(request, ctx).with_context(query).await
     }
+
+    pub async fn graphql_subscription<S: RemoteGraphQLDataSource>(
+        server: actix_web::web::Data<GatewayServer<S>>,
+        request: actix_web::web::Json<RequestData>,
+        req: actix_web::HttpRequest,
+    ) -> HttpResponse {
+        let request = request.into_inner();
+        let ctx = Context::new(req);
+        HttpResponse::Ok().finish()
+    }
+
     #[actix_web::get("/")]
     pub async fn playground() -> HttpResponse {
         let html = playground_source(GraphQLPlaygroundConfig::new("/"));
