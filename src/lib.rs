@@ -42,7 +42,7 @@ pub mod macros {
                     graphql_gateway::actix::graphql_subscription(server, req, payload).await
                 }
             fn $configure_method_name(config: &mut actix_web::web::ServiceConfig) {
-                cfg.service(
+                config.service(
                     actix_web::web::resource("/")
                         .route(actix_web::web::post().to(graphql_request))
                         .route(
