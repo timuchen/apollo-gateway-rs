@@ -58,7 +58,7 @@ impl<Source: RemoteGraphQLDataSource> ServiceRouteTable<Source> {
 
         let url = format!("http://{}", source.address()) ;
 
-        source.will_send_request(&mut request, ctx).await;
+        source.will_send_request(&mut request, ctx).await?;
 
         let headers = HeaderMap::try_from(&request.headers)?;
 
@@ -78,7 +78,7 @@ impl<Source: RemoteGraphQLDataSource> ServiceRouteTable<Source> {
 
         resp.headers = headers;
 
-        source.did_receive_response(&resp, &ctx).await;
+        source.did_receive_response(&mut resp, &ctx).await?;
 
         Ok(resp)
     }

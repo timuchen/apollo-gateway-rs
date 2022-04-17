@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::fmt::Debug;
 use std::future::Future;
 use std::ops::Deref;
@@ -6,12 +7,13 @@ use std::sync::Arc;
 use actix_web::{HttpRequest, HttpResponse};
 use graphgate_planner::{Request, Response};
 
+#[async_trait::async_trait]
 pub trait RemoteGraphQLDataSource : Sync + Send + 'static + Clone + Default {
     fn name(&self) -> &str;
     fn address(&self) -> &str;
-    type Future: Future + Send;
-    fn will_send_request(&self, request: &mut Request, ctx: &Context) -> Self::Future;
-    fn did_receive_response(&self, response: &Response, ctx: &Context) -> Self::Future;
+    type Error: Send + Sync + Error;
+    async fn will_send_request(&self, request: &mut Request, ctx: &Context) -> Result<(), Self::Error>;
+    async fn did_receive_response(&self, response: &mut Response, ctx: &Context) -> Result<(), Self::Error>;
 }
 
 

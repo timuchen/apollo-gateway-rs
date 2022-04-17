@@ -11,4 +11,5 @@ keywords = ["gateway", "graphql", "federation"]
 
 [dependencies]
 actix-web = "4.0.1"
+async-trait = "0.1.53"
 graphgate-planner = {path = "../planner"}
