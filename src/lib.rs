@@ -34,7 +34,7 @@ pub mod macros {
                 ) -> actix_web::HttpResponse {
                     graphql_gateway::actix::graphql_request(server, request, req).await
                 }
-                pub async fn graphql_subscription(
+                async fn graphql_subscription(
                     server: actix_web::web::Data<GatewayServer<$t>>,
                     req: actix_web::HttpRequest,
                     payload: actix_web::web::Payload,
@@ -43,14 +43,14 @@ pub mod macros {
                 }
             fn $configure_method_name(config: &mut actix_web::web::ServiceConfig) {
                 cfg.service(
-                    web::resource("/")
-                        .route(web::post().to(graphql_request))
+                    actix_web::web::resource("/")
+                        .route(actix_web::web::post().to(graphql_request))
                         .route(
-                            web::get()
-                                .guard(guard::Header("upgrade", "websocket"))
+                            actix_web::web::get()
+                                .guard(actix_web::guard::Header("upgrade", "websocket"))
                                 .to(graphql_subscription),
                         )
-                        .route(web::get().to(graphql_gateway::actix::playground)),
+                        .route(actix_web::web::get().to(graphql_gateway::actix::playground)),
                 );
             };
         }
