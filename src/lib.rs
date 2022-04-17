@@ -27,20 +27,20 @@ pub mod macros {
     #[macro_export]
     macro_rules! configure {
             ( $configure_method_name: ident, $t: ident) => {
-                async fn graphql_request(
-                    server: actix_web::web::Data<GatewayServer<$t>>,
-                    request: actix_web::web::Json<graphql_gateway::RequestData>,
-                    req: actix_web::HttpRequest,
-                ) -> actix_web::HttpResponse {
-                    graphql_gateway::actix::graphql_request(server, request, req).await
-                }
-                async fn graphql_subscription(
-                    server: actix_web::web::Data<GatewayServer<$t>>,
-                    req: actix_web::HttpRequest,
-                    payload: actix_web::web::Payload,
-                ) -> HttpResponse {
-                    graphql_gateway::actix::graphql_subscription(server, req, payload).await
-                }
+            async fn graphql_request(
+                server: actix_web::web::Data<GatewayServer<$t>>,
+                request: actix_web::web::Json<graphql_gateway::RequestData>,
+                req: actix_web::HttpRequest
+            ) -> actix_web::HttpResponse {
+                graphql_gateway::actix::graphql_request(server, request, req).await
+            }
+            async fn graphql_subscription(
+                server: actix_web::web::Data<GatewayServer<$t>>,
+                req: actix_web::HttpRequest,
+                payload: actix_web::web::Payload,
+            ) -> HttpResponse {
+                graphql_gateway::actix::graphql_subscription(server, req, payload).await
+            }
             fn $configure_method_name(config: &mut actix_web::web::ServiceConfig) {
                 config.service(
                     actix_web::web::resource("/")
@@ -52,7 +52,7 @@ pub mod macros {
                         )
                         .route(actix_web::web::get().to(graphql_gateway::actix::playground)),
                 );
-            };
+            }
         }
     }
 }
