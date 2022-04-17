@@ -1,13 +1,13 @@
-use actix_web::web::ServiceConfig;
+
 pub use datasource::{RemoteGraphQLDataSource, Context};
 pub use graphgate_planner::{RequestData, Request, Response};
 use graphgate_handler::{ServiceRouteTable, SharedRouteTable};
 use std::collections::HashMap;
 use std::iter::FromIterator;
-use std::ops::Deref;
-use std::sync::Arc;
-use actix_web::HttpResponse;
-use async_graphql::http::{GraphQLPlaygroundConfig, playground_source};
+
+
+
+
 
 pub struct GatewayServer<Source: RemoteGraphQLDataSource> {
     table: SharedRouteTable<Source>,
@@ -49,14 +49,14 @@ pub mod macros {
 }
 
 pub mod actix {
-    use std::collections::HashMap;
+    
     use actix_web::HttpResponse;
     use async_graphql::http::{GraphQLPlaygroundConfig, playground_source};
     use k8s_openapi::serde_json;
     use opentelemetry::trace::{FutureExt, TraceContextExt, Tracer};
     use datasource::{Context, RemoteGraphQLDataSource};
     use graphgate_handler::constants::{KEY_QUERY, KEY_VARIABLES};
-    use graphgate_planner::{Request, RequestData};
+    use graphgate_planner::{RequestData};
     use crate::GatewayServer;
 
     pub async fn graphql_request<S: RemoteGraphQLDataSource>(
@@ -80,12 +80,12 @@ pub mod actix {
     }
 
     pub async fn graphql_subscription<S: RemoteGraphQLDataSource>(
-        server: actix_web::web::Data<GatewayServer<S>>,
+        _server: actix_web::web::Data<GatewayServer<S>>,
         request: actix_web::web::Json<RequestData>,
         req: actix_web::HttpRequest,
     ) -> HttpResponse {
-        let request = request.into_inner();
-        let ctx = Context::new(req);
+        let _request = request.into_inner();
+        let _ctx = Context::new(req);
         HttpResponse::Ok().finish()
     }
 

@@ -1,3 +1,5 @@
+fn main() {}
+/*
 #[macro_use]
 extern crate graphql_gateway;
 use std::sync::Arc;
@@ -145,3 +147,4 @@ mod general_source {
         }
     }
 }
+*/
