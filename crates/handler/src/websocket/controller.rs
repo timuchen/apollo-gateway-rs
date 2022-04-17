@@ -150,7 +150,7 @@ impl<S: RemoteGraphQLDataSource> WebSocketContext<S> {
             anyhow::anyhow!("Service '{}' is not defined in the routing table.", service)
         })?;
 
-        let url = format!("http://{}", route.address());
+        let url = format!("ws://{}", route.address());
 
         tracing::debug!(url = %url, service = service, "Connect to upstream websocket");
         let mut http_request = HttpRequest::builder()
