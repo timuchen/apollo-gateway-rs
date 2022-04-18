@@ -5,45 +5,37 @@ use actix::dev::Stream;
 use datasource::{Context, RemoteGraphQLDataSource};
 use graphgate_schema::ComposedSchema;
 use actix_web_actors::ws;
-use actix_web_actors::ws::{Message, ProtocolError};
+use actix_web_actors::ws::{CloseCode, CloseReason, Message, ProtocolError};
 use futures_util::FutureExt;
 use value::ConstValue;
 use graphgate_planner::{Response, ServerError};
 use crate::ServiceRouteTable;
 use crate::websocket::protocol::{ClientMessage, ConnectionError, ServerMessage};
-use crate::websocket::{Protocols, WebSocketController};
-use crate::websocket::grouped_stream::{GroupedStream, StreamEvent};
+use crate::websocket::{Protocols, WebSocketController, grouped_stream::StreamEvent};
 
 pub struct Subscription<S: RemoteGraphQLDataSource> {
     schema: Arc<ComposedSchema>,
     route_table: Arc<ServiceRouteTable<S>>,
     context: Context,
     controller: Option<WebSocketController>,
-    streams: GroupedStream<Arc<String>, Pin<Box<dyn Stream<Item = Response>>>>,
     protocol: Protocols
 }
 
 impl<S: RemoteGraphQLDataSource> Subscription<S> {
     pub fn new(schema: Arc<ComposedSchema>, route_table: Arc<ServiceRouteTable<S>>, context: Context, protocol: Protocols) -> Self {
         let controller = None;
-        let streams = GroupedStream::default();
         Self {
             schema,
             route_table,
             context,
-            streams,
             controller,
             protocol
         }
     }
 }
 
-impl<S: RemoteGraphQLDataSource > Actor for Subscription<S> {
-    type Context = ws::WebsocketContext<Subscription<S>>;
-    fn started(&mut self, ctx: &mut Self::Context) {
-        let mut streams = self.streams.clone();
-        ctx.add_message_stream(streams);
-    }
+impl<S: RemoteGraphQLDataSource> Actor for Subscription<S> {
+    type Context = ws::WebsocketContext<Self>;
 }
 
 impl<S: RemoteGraphQLDataSource> StreamHandler<Result<ws::Message, ws::ProtocolError>> for Subscription<S> {
@@ -60,6 +52,25 @@ impl<S: RemoteGraphQLDataSource> StreamHandler<Result<ws::Message, ws::ProtocolE
                     self.controller = Some(WebSocketController::new(self.route_table.clone(), payload));
                     let message = serde_json::to_string(&ServerMessage::ConnectionAck).unwrap();
                     ctx.text(message);
+                }
+                ClientMessage::ConnectionInit { .. } => {
+                    match self.protocol {
+                        Protocols::SubscriptionsTransportWS => {
+                            let err_msg =
+                                serde_json::to_string(&ServerMessage::ConnectionError {
+                                    payload: ConnectionError {
+                                        message: "Too many initialisation requests.",
+                                    },
+                                }).unwrap();
+                            ctx.text(err_msg);
+                            ctx.stop();
+                        }
+                        Protocols::GraphQLWS => {
+                            let reason = CloseReason::from(CloseCode::Unsupported);
+                            ctx.close(Some(reason));
+                            ctx.stop();
+                        }
+                    }
                 }
                 ClientMessage::Stop { id } => {
                     let table = self.route_table.clone();
@@ -87,6 +98,7 @@ impl<S: RemoteGraphQLDataSource> StreamHandler<Result<ws::Message, ws::ProtocolE
                             let complete = ServerMessage::Complete { id };
                             let message = serde_json::to_string(&complete).unwrap();
                             ctx.text(message);
+                            ctx.stop();
                             return;
                         }
                     };
@@ -101,7 +113,8 @@ impl<S: RemoteGraphQLDataSource> StreamHandler<Result<ws::Message, ws::ProtocolE
                             let node = match builder.plan() {
                                 Ok(node) => node,
                                 Err(resp) => {
-                                    yield resp;
+                                    yield StreamEvent::Data(Arc::clone(&id), resp);
+                                    yield StreamEvent::Complete(id);
                                     return;
                                 }
                             };
@@ -109,11 +122,12 @@ impl<S: RemoteGraphQLDataSource> StreamHandler<Result<ws::Message, ws::ProtocolE
                             let mut stream = executor.execute_stream(controller.clone(), &id, &node).await;
                             use futures_util::StreamExt;
                             while let Some(item) = stream.next().await {
-                                yield item;
+                                yield StreamEvent::Data(Arc::clone(&id), item);
                             }
+                            yield StreamEvent::Complete(id);
                         }
                     };
-                    self.streams.insert(id, Box::pin(stream));
+                    ctx.add_message_stream(stream);
                 }
                 _ => {}
             }

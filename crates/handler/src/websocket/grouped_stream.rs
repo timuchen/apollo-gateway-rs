@@ -11,18 +11,11 @@ use futures_util::task::AtomicWaker;
 use futures_util::StreamExt;
 
 pub struct GroupedStream<K, S> {
-    streams: Arc<Mutex<HashMap<K, S>>>,
-    waker: Arc<AtomicWaker>,
+    streams: HashMap<K, S>,
+    waker: AtomicWaker,
 }
 
-impl<K, S> Clone for GroupedStream<K, S> {
-    fn clone(&self) -> Self {
-        Self {
-            streams: Arc::clone(&self.streams),
-            waker: Arc::clone(&self.waker)
-        }
-    }
-}
+
 
 impl<K, S> Default for GroupedStream<K, S> {
     fn default() -> Self {
@@ -36,9 +29,7 @@ impl<K, S> Default for GroupedStream<K, S> {
 impl<K: Eq + Hash + Clone, S> GroupedStream<K, S> {
     #[inline]
     pub fn insert(&mut self, key: K, stream: S) {
-        self.waker.wake();
-        let mut guard = self.streams.lock().unwrap();
-        guard.insert(key, stream);
+        self.streams.insert(key, stream);
     }
 
     #[inline]
@@ -47,8 +38,7 @@ impl<K: Eq + Hash + Clone, S> GroupedStream<K, S> {
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let mut guard = self.streams.lock().unwrap();
-        guard.remove(key);
+        self.streams.remove(key);
     }
 
     #[inline]
@@ -57,8 +47,7 @@ impl<K: Eq + Hash + Clone, S> GroupedStream<K, S> {
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let mut guard = self.streams.lock().unwrap();
-        guard.contains_key(key)
+        self.streams.contains_key(key)
     }
 }
 
@@ -79,17 +68,16 @@ where
 {
     type Item = StreamEvent<K, T>;
 
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.waker.register(cx.waker());
-        let mut streams = self.streams.lock().unwrap();
-        for (key, stream) in streams.iter_mut() {
+        for (key, stream) in  self.streams.iter_mut() {
             match stream.poll_next_unpin(cx) {
                 Poll::Ready(Some(value)) => {
                     return Poll::Ready(Some(StreamEvent::Data(key.clone(), value)))
                 }
                 Poll::Ready(None) => {
                     let key = key.clone();
-                    streams.remove(&key);
+                    self.streams.remove(&key);
                     return Poll::Ready(Some(StreamEvent::Complete(key)));
                 }
                 Poll::Pending => {}
