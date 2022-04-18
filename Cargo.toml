@@ -1,6 +1,6 @@
 [package]
 name = "graphql-gateway"
-version = "0.7.1"
+version = "0.7.2"
 authors = ["Sunli <scott_s829@163.com>"]
 edition = "2021"
 description = "GraphGate is Apollo Federation implemented in Rust"
@@ -20,7 +20,7 @@ k8s-openapi = { version = "0.14.0", features = ["v1_22"], default-features = fal
 tokio = { version = "1.15.0", features = ["rt-multi-thread", "time", "macros", "sync", "signal"] }
 futures-util = "0.3.19"
 tracing = "0.1.29"
-opentelemetry = { version = "0.17.0", features = ["rt-tokio", "metrics"] }
+opentelemetry = { version = "0.16.0", features = ["rt-tokio", "metrics"] }
 actix-web = "4.0.1"
 actix-web-actors = "4.1.0"
 actix = "0.13.0"
