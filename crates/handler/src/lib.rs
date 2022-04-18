@@ -11,5 +11,3 @@ mod introspection;
 mod service_route;
 mod shared_route_table;
 mod websocket;
-
-pub mod handler;

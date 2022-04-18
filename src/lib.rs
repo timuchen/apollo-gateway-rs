@@ -59,11 +59,11 @@ pub mod macros {
 pub mod actix {
     use std::str::FromStr;
     use std::sync::Arc;
+    use actix_web::http::header::SEC_WEBSOCKET_PROTOCOL;
     use actix_web::HttpResponse;
     use async_graphql::http::{GraphQLPlaygroundConfig, playground_source};
     use k8s_openapi::serde_json;
     use opentelemetry::trace::{FutureExt, TraceContextExt, Tracer};
-    use warp::http::header::SEC_WEBSOCKET_PROTOCOL;
     use datasource::{Context, RemoteGraphQLDataSource};
     use graphgate_handler::constants::{KEY_QUERY, KEY_VARIABLES};
     use graphgate_handler::{Protocols, Subscription};

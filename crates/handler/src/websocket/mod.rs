@@ -1,6 +1,5 @@
 mod controller;
 mod protocol;
-mod server;
 mod subscription;
 mod grouped_stream;
 
