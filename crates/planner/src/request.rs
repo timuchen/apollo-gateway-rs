@@ -4,7 +4,6 @@ use value::{ConstValue, Variables};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Request {
-    pub data: RequestData,
     pub headers: HashMap<String, String>
 }
 

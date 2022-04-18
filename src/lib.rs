@@ -59,6 +59,7 @@ pub mod macros {
 
 pub mod actix {
     use std::str::FromStr;
+    use std::sync::Arc;
     use actix_web::HttpResponse;
     use async_graphql::http::{GraphQLPlaygroundConfig, playground_source};
     use k8s_openapi::serde_json;
@@ -95,7 +96,7 @@ pub mod actix {
         req: actix_web::HttpRequest,
         payload: actix_web::web::Payload,
     ) -> HttpResponse {
-        let ctx = Context::new(req.clone());
+        let ctx = Arc::new(Context::new(req.clone()));
         let protocols = req.headers().get(SEC_WEBSOCKET_PROTOCOL).and_then(|header| header.to_str().ok());
         let protocol = protocols
             .and_then(|protocols| {

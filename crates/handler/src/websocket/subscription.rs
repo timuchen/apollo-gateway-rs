@@ -16,13 +16,13 @@ use crate::websocket::{Protocols, WebSocketController, grouped_stream::StreamEve
 pub struct Subscription<S: RemoteGraphQLDataSource> {
     schema: Arc<ComposedSchema>,
     route_table: Arc<ServiceRouteTable<S>>,
-    context: Context,
+    context: Arc<Context>,
     controller: Option<WebSocketController>,
     protocol: Protocols
 }
 
 impl<S: RemoteGraphQLDataSource> Subscription<S> {
-    pub fn new(schema: Arc<ComposedSchema>, route_table: Arc<ServiceRouteTable<S>>, context: Context, protocol: Protocols) -> Self {
+    pub fn new(schema: Arc<ComposedSchema>, route_table: Arc<ServiceRouteTable<S>>, context: Arc<Context>, protocol: Protocols) -> Self {
         let controller = None;
         Self {
             schema,
@@ -40,7 +40,6 @@ impl<S: RemoteGraphQLDataSource> Actor for Subscription<S> {
 
 impl<S: RemoteGraphQLDataSource> StreamHandler<Result<ws::Message, ws::ProtocolError>> for Subscription<S> {
     fn handle(&mut self, item: Result<Message, ProtocolError>, ctx: &mut Self::Context) {
-        tracing::info!("{:?}", item);
         if let Ok(Message::Text(ref text)) = item {
             let bytes = text.as_bytes();
             let client_msg = match serde_json::from_slice::<ClientMessage>(bytes) {
@@ -49,7 +48,8 @@ impl<S: RemoteGraphQLDataSource> StreamHandler<Result<ws::Message, ws::ProtocolE
             };
             match client_msg {
                 ClientMessage::ConnectionInit { payload } if self.controller.is_none() => {
-                    self.controller = Some(WebSocketController::new(self.route_table.clone(), payload));
+                    let context = Arc::clone(&self.context);
+                    self.controller = Some(WebSocketController::new(self.route_table.clone(), payload, context));
                     let message = serde_json::to_string(&ServerMessage::ConnectionAck).unwrap();
                     ctx.text(message);
                 }
@@ -74,7 +74,8 @@ impl<S: RemoteGraphQLDataSource> StreamHandler<Result<ws::Message, ws::ProtocolE
                 }
                 ClientMessage::Stop { id } => {
                     let table = self.route_table.clone();
-                    let controller = self.controller.get_or_insert_with(|| WebSocketController::new(table, None)).clone();
+                    let context = Arc::clone(&self.context);
+                    let controller = self.controller.get_or_insert_with(|| WebSocketController::new(table, None, context)).clone();
                     let id = id.to_owned();
                     actix::spawn(async move {
                         controller.stop(id).await
@@ -82,7 +83,8 @@ impl<S: RemoteGraphQLDataSource> StreamHandler<Result<ws::Message, ws::ProtocolE
                 }
                 ClientMessage::Start { id, payload } | ClientMessage::Subscribe { id, payload } => {
                     let table = self.route_table.clone();
-                    let controller = self.controller.get_or_insert_with(|| WebSocketController::new(table, None)).clone();
+                    let context = Arc::clone(&self.context);
+                    let controller = self.controller.get_or_insert_with(|| WebSocketController::new(table, None, context)).clone();
                     let document = match parser::parse_query(&payload.query) {
                         Ok(document) => document,
                         Err(err) => {
@@ -142,7 +144,6 @@ type Event = StreamEvent<Arc<std::string::String>, graphgate_planner::Response>;
 impl<S: RemoteGraphQLDataSource> Handler<Event> for Subscription<S> {
     type Result = ();
     fn handle(&mut self, msg: Event, ctx: &mut Self::Context) -> Self::Result {
-        tracing::info!("{:?}", msg);
         match msg {
             StreamEvent::Data(id, resp) => {
                 let data = self.protocol.next_message(&id, resp);

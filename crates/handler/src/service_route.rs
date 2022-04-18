@@ -46,7 +46,7 @@ impl<Source: RemoteGraphQLDataSource> ServiceRouteTable<Source> {
     pub async fn query(
         &self,
         service: impl AsRef<str>,
-         request: RequestData,
+        request: RequestData,
         ctx: &Context
     ) -> anyhow::Result<Response> {
         let service = service.as_ref();
@@ -54,18 +54,18 @@ impl<Source: RemoteGraphQLDataSource> ServiceRouteTable<Source> {
             anyhow::anyhow!("Service '{}' is not defined in the routing table.", service)
         })?;
 
-        let mut request = Request {data: request, headers: HashMap::new()};
+        let mut req = Request { headers: HashMap::new()};
 
         let url = format!("http://{}", source.address()) ;
 
-        source.will_send_request(&mut request, ctx).await?;
+        source.will_send_request(&mut req, ctx).await?;
 
-        let headers = HeaderMap::try_from(&request.headers)?;
+        let headers = HeaderMap::try_from(&req.headers)?;
 
         let raw_resp = HTTP_CLIENT
             .post(&url)
             .headers(headers)
-            .json(&request.data)
+            .json(&request)
             .send()
             .and_then(|res| async move { res.error_for_status() })
             .await?;

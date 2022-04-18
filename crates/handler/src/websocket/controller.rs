@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::convert::TryFrom;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -13,7 +14,7 @@ use tokio::time::Duration;
 use tokio_tungstenite::tungstenite::protocol::CloseFrame;
 use tokio_tungstenite::tungstenite::{Message, Result as WsResult};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
-use datasource::RemoteGraphQLDataSource;
+use datasource::{Context, RemoteGraphQLDataSource};
 
 use super::grouped_stream::{GroupedStream, StreamEvent};
 use super::protocol::{ClientMessage, Protocols, ServerMessage};
@@ -48,9 +49,11 @@ impl WebSocketController {
     pub fn new<S: RemoteGraphQLDataSource>(
         route_table: Arc<ServiceRouteTable<S>>,
         init_payload: Option<serde_json::Value>,
+        ctx: Arc<Context>
     ) -> Self {
         let (tx_command, rx_command) = mpsc::unbounded_channel();
         let ctx = WebSocketContext {
+            ctx,
             route_table,
             init_payload,
             upstream: GroupedStream::default(),
@@ -114,6 +117,7 @@ struct WebSocketContext<S: RemoteGraphQLDataSource> {
     upstream_info: HashMap<String, UpstreamInfo>,
     rx_command: mpsc::UnboundedReceiver<Command>,
     subscribes: HashMap<String, SubscribeInfo>,
+    ctx: Arc<Context>
 }
 
 impl<S: RemoteGraphQLDataSource> WebSocketContext<S> {
@@ -146,11 +150,17 @@ impl<S: RemoteGraphQLDataSource> WebSocketContext<S> {
         service: &str,
     ) -> Result<(WebSocketStream<MaybeTlsStream<TcpStream>>, Protocols)> {
         const PROTOCOLS: &str = "graphql-ws, graphql-transport-ws";
-        let route = self.route_table.get(service).ok_or_else(|| {
+        let source = self.route_table.get(service).ok_or_else(|| {
             anyhow::anyhow!("Service '{}' is not defined in the routing table.", service)
         })?;
 
-        let url = format!("ws://{}", route.address());
+        let url = format!("ws://{}", source.address());
+
+        let mut request = Request {headers: HashMap::new()};
+
+        source.will_send_request(&mut request, &self.ctx).await?;
+
+        let headers = HeaderMap::try_from(&request.headers)?;
 
         tracing::debug!(url = %url, service = service, "Connect to upstream websocket");
         let mut http_request = HttpRequest::builder()
@@ -158,6 +168,7 @@ impl<S: RemoteGraphQLDataSource> WebSocketContext<S> {
             .header("Sec-WebSocket-Protocol", PROTOCOLS)
             .body(())
             .unwrap();
+        http_request.headers_mut().extend(headers);
         //http_request.headers_mut().extend(self.header_map.clone());
         let (mut stream, http_response) = tokio_tungstenite::connect_async(http_request).await?;
         let protocol = http_response
