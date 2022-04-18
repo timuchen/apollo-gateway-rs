@@ -103,7 +103,6 @@ pub mod actix {
                 protocols.split(',').find_map(|p| Protocols::from_str(p.trim()).ok())
             })
             .unwrap_or(Protocols::SubscriptionsTransportWS);
-        tracing::info!("{:?}", protocol);
         if let Some((composed_schema, route_table)) = server.table.get().await {
             let protocols = [protocol.sec_websocket_protocol()];
             let subscription = Subscription::new(composed_schema, route_table, ctx, protocol);
