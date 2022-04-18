@@ -4,7 +4,7 @@ use chrono::{DateTime, Duration, Utc};
 use futures_util::future::BoxFuture;
 use futures_util::stream::BoxStream;
 use futures_util::StreamExt;
-use graphgate_planner::{FetchNode, FlattenNode, IntrospectionNode, ParallelNode, PathSegment, PlanNode, Request, ResponsePath, RootNode, SequenceNode, SubscribeNode};
+use graphgate_planner::{FetchNode, FlattenNode, IntrospectionNode, ParallelNode, PathSegment, PlanNode, ResponsePath, RootNode, SequenceNode, SubscribeNode};
 use graphgate_planner::{RequestData, Response, ServerError};
 use graphgate_schema::ComposedSchema;
 use indexmap::IndexMap;

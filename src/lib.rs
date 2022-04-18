@@ -4,7 +4,6 @@ use graphgate_handler::{ServiceRouteTable, SharedRouteTable};
 use std::collections::HashMap;
 use std::iter::FromIterator;
 
-
 pub struct GatewayServer<Source: RemoteGraphQLDataSource> {
     table: SharedRouteTable<Source>,
 }

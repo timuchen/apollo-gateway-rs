@@ -1,18 +1,15 @@
 use std::sync::Arc;
-use actix_web::body::BoxBody;
 use actix_web::HttpResponse;
 
 use anyhow::{Context, Error, Result};
-use graphgate_planner::{PlanBuilder, Request, RequestData, Response, ServerError};
+use graphgate_planner::{PlanBuilder, RequestData, Response, ServerError};
 use graphgate_schema::ComposedSchema;
-use http::{header::HeaderName, HeaderValue};
 use opentelemetry::trace::{TraceContextExt, Tracer};
 use opentelemetry::{global, Context as OpenTelemetryContext};
 use serde::Deserialize;
 use tokio::sync::{mpsc, RwLock};
 use tokio::time::{Duration, Instant};
 use value::ConstValue;
-use warp::http::{HeaderMap, StatusCode};
 use datasource::RemoteGraphQLDataSource;
 
 use crate::executor::Executor;

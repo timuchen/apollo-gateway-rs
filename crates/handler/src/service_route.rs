@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::ops::{Deref, DerefMut};
-use std::sync::Arc;
-
 use futures_util::TryFutureExt;
 use graphgate_planner::{RequestData, Request, Response};
 use http::HeaderMap;

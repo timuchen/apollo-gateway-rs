@@ -1,12 +1,9 @@
-use std::pin::Pin;
 use std::sync::Arc;
-use actix::{Actor, ActorContext, Addr, ArbiterHandle, AsyncContext, ContextFutureSpawner, Handler, Running, SpawnHandle, StreamHandler, WrapFuture};
-use actix::dev::Stream;
+use actix::{Actor, AsyncContext, ActorContext, Handler, StreamHandler};
 use datasource::{Context, RemoteGraphQLDataSource};
 use graphgate_schema::ComposedSchema;
 use actix_web_actors::ws;
 use actix_web_actors::ws::{CloseCode, CloseReason, Message, ProtocolError};
-use futures_util::FutureExt;
 use value::ConstValue;
 use graphgate_planner::{Response, ServerError};
 use crate::ServiceRouteTable;

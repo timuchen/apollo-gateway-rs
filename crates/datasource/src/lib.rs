@@ -1,10 +1,6 @@
 use std::error::Error;
-use std::fmt::Debug;
-use std::future::Future;
 use std::ops::Deref;
-use std::pin::Pin;
-use std::sync::Arc;
-use actix_web::{HttpRequest, HttpResponse};
+use actix_web::HttpRequest;
 use graphgate_planner::{Request, Response};
 
 #[async_trait::async_trait]

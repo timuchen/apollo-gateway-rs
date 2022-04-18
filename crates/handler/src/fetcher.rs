@@ -1,9 +1,6 @@
-use std::ops::Rem;
 use std::sync::atomic::{AtomicU64, Ordering};
-
 use anyhow::Result;
-use graphgate_planner::{Request, RequestData, Response};
-use http::HeaderMap;
+use graphgate_planner::{RequestData, Response};
 use tokio::sync::mpsc;
 use datasource::{Context, RemoteGraphQLDataSource};
 
