@@ -58,6 +58,18 @@ impl<S: RemoteGraphQLDataSource> Actor for Subscription<S> {
 
 impl<S: RemoteGraphQLDataSource> StreamHandler<Result<ws::Message, ws::ProtocolError>> for Subscription<S> {
     fn handle(&mut self, item: Result<Message, ProtocolError>, ctx: &mut Self::Context) {
+        match &item {
+            Ok(Message::Ping(msg)) => {
+                self.last_heartbeat = Instant::now();
+                ctx.pong(msg);
+                return;
+            }
+            Ok(Message::Pong(_)) => {
+                self.last_heartbeat = Instant::now();
+                return;
+            }
+            _ => {}
+        }
         if let Ok(Message::Text(ref text)) = item {
             let bytes = text.as_bytes();
             let client_msg = match serde_json::from_slice::<ClientMessage>(bytes) {
