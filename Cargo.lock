@@ -341,6 +341,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4361135be9122e0870de935d7c439aef945b9f9ddd4199a553b5270b49c82a27"
 
 [[package]]
+name = "apollo-gateway-rs"
+version = "0.7.2"
+dependencies = [
+ "actix",
+ "actix-identity",
+ "actix-web",
+ "actix-web-actors",
+ "anyhow",
+ "async-graphql",
+ "async-graphql-warp",
+ "async-stream",
+ "datasource",
+ "fastrand",
+ "futures-util",
+ "graphgate-handler",
+ "graphgate-planner",
+ "jemallocator",
+ "k8s-openapi",
+ "opentelemetry",
+ "serde",
+ "tokio",
+ "tracing",
+ "tracing-actix-web",
+]
+
+[[package]]
 name = "ascii_utils"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1071,7 +1097,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tokio-stream",
- "tokio-tungstenite 0.17.1",
+ "tokio-tungstenite 0.16.1",
  "tracing",
 ]
 
@@ -1108,32 +1134,6 @@ dependencies = [
  "graphgate-schema",
  "indexmap",
  "once_cell",
-]
-
-[[package]]
-name = "graphql-gateway"
-version = "0.7.2"
-dependencies = [
- "actix",
- "actix-identity",
- "actix-web",
- "actix-web-actors",
- "anyhow",
- "async-graphql",
- "async-graphql-warp",
- "async-stream",
- "datasource",
- "fastrand",
- "futures-util",
- "graphgate-handler",
- "graphgate-planner",
- "jemallocator",
- "k8s-openapi",
- "opentelemetry",
- "serde",
- "tokio",
- "tracing",
- "tracing-actix-web",
 ]
 
 [[package]]
@@ -2356,9 +2356,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-tungstenite"
-version = "0.17.1"
+version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06cda1232a49558c46f8a504d5b93101d42c0bf7f911f12a105ba48168f821ae"
+checksum = "e80b39df6afcc12cdf752398ade96a6b9e99c903dfdc36e53ad10b9c366bca72"
 dependencies = [
  "futures-util",
  "log",
@@ -2366,7 +2366,7 @@ dependencies = [
  "rustls-native-certs",
  "tokio",
  "tokio-rustls",
- "tungstenite 0.17.2",
+ "tungstenite 0.16.0",
  "webpki",
 ]
 
@@ -2534,9 +2534,9 @@ dependencies = [
 
 [[package]]
 name = "tungstenite"
-version = "0.17.2"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d96a2dea40e7570482f28eb57afbe42d97551905da6a9400acc5c328d24004f5"
+checksum = "6ad3713a14ae247f22a728a0456a545df14acf3867f905adff84be99e23b3ad1"
 dependencies = [
  "base64",
  "byteorder",
@@ -2546,7 +2546,7 @@ dependencies = [
  "log",
  "rand",
  "rustls",
- "sha-1 0.10.0",
+ "sha-1 0.9.8",
  "thiserror",
  "url",
  "utf-8",

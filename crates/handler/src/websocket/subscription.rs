@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use actix::{Actor, AsyncContext, ActorContext, Handler, StreamHandler};
 use datasource::{Context, RemoteGraphQLDataSource};
 use graphgate_schema::ComposedSchema;
@@ -15,24 +16,44 @@ pub struct Subscription<S: RemoteGraphQLDataSource> {
     route_table: Arc<ServiceRouteTable<S>>,
     context: Arc<Context>,
     controller: Option<WebSocketController>,
-    protocol: Protocols
+    protocol: Protocols,
+    last_heartbeat: Instant
 }
 
 impl<S: RemoteGraphQLDataSource> Subscription<S> {
     pub fn new(schema: Arc<ComposedSchema>, route_table: Arc<ServiceRouteTable<S>>, context: Arc<Context>, protocol: Protocols) -> Self {
         let controller = None;
+        let last_heartbeat = Instant::now();
         Self {
             schema,
             route_table,
             context,
             controller,
-            protocol
+            protocol,
+            last_heartbeat
         }
+    }
+}
+
+const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
+const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
+
+impl<S: RemoteGraphQLDataSource> Subscription<S> {
+    fn send_heartbeats(&self, ctx: &mut ws::WebsocketContext<Self>) {
+        ctx.run_interval(HEARTBEAT_INTERVAL, |actor, ctx| {
+            if Instant::now().duration_since(actor.last_heartbeat) > CLIENT_TIMEOUT {
+                ctx.stop();
+            }
+            ctx.ping(b"");
+        });
     }
 }
 
 impl<S: RemoteGraphQLDataSource> Actor for Subscription<S> {
     type Context = ws::WebsocketContext<Self>;
+    fn started(&mut self, ctx: &mut Self::Context) {
+        self.send_heartbeats(ctx);
+    }
 }
 
 impl<S: RemoteGraphQLDataSource> StreamHandler<Result<ws::Message, ws::ProtocolError>> for Subscription<S> {
