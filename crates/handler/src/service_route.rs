@@ -54,7 +54,7 @@ impl<Source: RemoteGraphQLDataSource> ServiceRouteTable<Source> {
 
         let mut req = Request { headers: HashMap::new()};
 
-        let url = format!("http://{}", source.address()) ;
+        let url = source.url_query();
 
         source.will_send_request(&mut req, ctx).await?;
 
@@ -89,7 +89,10 @@ impl<Source: RemoteGraphQLDataSource> ServiceRouteTable<Source> {
         let source = self.0.get(service).ok_or_else(|| {
             anyhow::anyhow!("Service '{}' is not defined in the routing table.", service)
         })?;
-        let url = format!("http://{}", source.address()) ;
+        let address= source.address();
+        let protocol = source.tls().then(|| "https").unwrap_or("http");
+        let path = source.query_path().unwrap_or("");
+        let url = format!("{protocol}://{address}/{path}") ;
         let raw_resp = HTTP_CLIENT
             .post(&url)
             .json(&request)

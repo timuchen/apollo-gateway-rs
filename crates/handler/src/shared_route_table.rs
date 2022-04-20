@@ -25,11 +25,18 @@ struct Inner<S: RemoteGraphQLDataSource> {
     route_table: Option<Arc<ServiceRouteTable<S>>>,
 }
 
-#[derive(Clone)]
 pub struct SharedRouteTable<S: RemoteGraphQLDataSource> {
     inner: Arc<RwLock<Inner<S>>>,
     tx: mpsc::UnboundedSender<Command<S>>,
-    receive_headers: Vec<String>,
+}
+
+impl<S: RemoteGraphQLDataSource> Clone for SharedRouteTable<S> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: Arc::clone(&self.inner),
+            tx: self.tx.clone()
+        }
+    }
 }
 
 impl<S: RemoteGraphQLDataSource> Default for SharedRouteTable<S> {
@@ -41,7 +48,6 @@ impl<S: RemoteGraphQLDataSource> Default for SharedRouteTable<S> {
                 route_table: None,
             })),
             tx,
-            receive_headers: vec![],
         };
         tokio::spawn({
             let shared_route_table = shared_route_table.clone();
@@ -123,10 +129,6 @@ impl<S: RemoteGraphQLDataSource> SharedRouteTable<S> {
 
     pub fn set_route_table(&self, route_table: ServiceRouteTable<S>) {
         self.tx.send(Command::Change(route_table)).ok();
-    }
-
-    pub fn set_receive_headers(&mut self, receive_headers: Vec<String>) {
-        self.receive_headers = receive_headers;
     }
 
     pub async fn get(&self) -> Option<(Arc<ComposedSchema>, Arc<ServiceRouteTable<S>>)> {

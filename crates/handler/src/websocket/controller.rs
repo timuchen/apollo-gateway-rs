@@ -154,7 +154,7 @@ impl<S: RemoteGraphQLDataSource> WebSocketContext<S> {
             anyhow::anyhow!("Service '{}' is not defined in the routing table.", service)
         })?;
 
-        let url = format!("ws://{}", source.address());
+        let url = source.url_subscription();
 
         let mut request = Request {headers: HashMap::new()};
 
