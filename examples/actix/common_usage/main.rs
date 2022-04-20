@@ -51,11 +51,10 @@ async fn main() -> std::io::Result<()> {
 mod common_source {
     use apollo_gateway_rs::RemoteGraphQLDataSource;
 
-    #[derive(Clone, Default)]
     pub struct CommonSource {
-        pub(crate) name: String,
-        pub(crate) addr: String,
-        pub(crate) tls: bool,
+        pub name: String,
+        pub addr: String,
+        pub tls: bool,
     }
 
     impl CommonSource {
