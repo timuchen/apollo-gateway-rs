@@ -52,7 +52,7 @@ pub mod actix {
     use graphgate_handler::{Protocols, Subscription};
     use graphgate_planner::{RequestData};
     use crate::GatewayServer;
-
+    ///! Request handler
     pub async fn graphql_request(
         server: actix_web::web::Data<GatewayServer>,
         request: actix_web::web::Json<RequestData>,
@@ -72,7 +72,7 @@ pub mod actix {
         );
         server.table.query(request, ctx).with_context(query).await
     }
-
+    ///! Subscription handler
     pub async fn graphql_subscription(
         server: actix_web::web::Data<GatewayServer>,
         req: actix_web::HttpRequest,
