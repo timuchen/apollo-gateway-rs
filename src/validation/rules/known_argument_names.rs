@@ -25,9 +25,7 @@ impl<'a> KnownArgumentNames<'a> {
         make_suggestion(
             " Did you mean",
             self.current_args
-                .iter()
-                .map(|(args, _)| args.iter().map(|arg| arg.0.as_str()))
-                .flatten(),
+                .iter().flat_map(|(args, _)| args.iter().map(|arg| arg.0.as_str())),
             name,
         )
         .unwrap_or_default()

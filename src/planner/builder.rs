@@ -528,8 +528,7 @@ impl<'a> Context<'a> {
 
         let service = match field_definition
             .service
-            .as_deref()
-            .or_else(|| parent_type.owner.as_deref())
+            .as_deref().or(parent_type.owner.as_deref())
         {
             Some(service) => service,
             None => current_service,
@@ -553,7 +552,7 @@ impl<'a> Context<'a> {
                     fetch_entity_group,
                     parent_type,
                     field,
-                    &field_definition,
+                    field_definition,
                     service,
                     keys,
                 );
@@ -574,7 +573,7 @@ impl<'a> Context<'a> {
                 &mut sub_selection_set,
                 fetch_entity_group,
                 current_service,
-                &field_type,
+                field_type,
                 &field.selection_set.node,
             );
         } else {

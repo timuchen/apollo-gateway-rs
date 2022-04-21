@@ -138,7 +138,7 @@ fn stringify_key_fields(f: &mut Formatter<'_>, prefix: usize, fields: &KeyFields
 
     for (field_name, children) in fields.iter() {
         write!(f, " __key{}_{}:{}", prefix, field_name, field_name)?;
-        stringify_key_fields_no_prefix(f, &children)?;
+        stringify_key_fields_no_prefix(f, children)?;
     }
     Ok(())
 }
@@ -176,9 +176,9 @@ fn stringify_selection_ref_set_rec(
             }
             SelectionRef::RequiredRef(require_ref) => {
                 write!(f, "__key{}___typename:__typename", require_ref.prefix,)?;
-                stringify_key_fields(f, require_ref.prefix, &require_ref.fields)?;
+                stringify_key_fields(f, require_ref.prefix, require_ref.fields)?;
                 if let Some(requires) = require_ref.requires {
-                    stringify_key_fields(f, require_ref.prefix, &requires)?;
+                    stringify_key_fields(f, require_ref.prefix, requires)?;
                 }
             }
             SelectionRef::InlineFragment {
@@ -256,12 +256,6 @@ pub type FetchEntityGroup<'a> = IndexMap<FetchEntityKey<'a>, FetchEntity<'a>>;
 #[derive(Debug, Default)]
 pub struct VariableDefinitionsRef<'a> {
     pub variables: Vec<&'a VariableDefinition>,
-}
-
-impl<'a> VariableDefinitionsRef<'a> {
-    pub fn is_empty(&self) -> bool {
-        self.variables.is_empty()
-    }
 }
 
 impl<'a> Serialize for VariableDefinitionsRef<'a> {

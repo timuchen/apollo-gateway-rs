@@ -173,9 +173,7 @@ impl<S: RemoteGraphQLDataSource> WebSocketContext<S> {
         let protocol = http_response
             .headers()
             .get("Sec-WebSocket-Protocol")
-            .and_then(|value| value.to_str().ok())
-            .map(|value| Protocols::from_str(value).ok())
-            .flatten()
+            .and_then(|value| value.to_str().ok()).and_then(|value| Protocols::from_str(value).ok())
             .ok_or_else(|| anyhow::anyhow!("Unknown protocol: {}", url))?;
 
         stream

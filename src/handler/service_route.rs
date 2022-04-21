@@ -76,7 +76,7 @@ impl<Source: RemoteGraphQLDataSource> ServiceRouteTable<Source> {
 
         resp.headers = headers;
 
-        source.did_receive_response(&mut resp, &ctx).await?;
+        source.did_receive_response(&mut resp, ctx).await?;
 
         Ok(resp)
     }

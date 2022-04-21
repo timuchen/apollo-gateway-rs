@@ -17,12 +17,10 @@ impl<'a> Visitor<'a> for ProvidedNonNullArguments {
             for arg in schema_directive.arguments.values() {
                 if !arg.ty.nullable
                     && arg.default_value.is_none()
-                    && directive
+                    && !directive
                         .node
                         .arguments
-                        .iter()
-                        .find(|(name, _)| name.node == arg.name)
-                        .is_none()
+                        .iter().any(|(name, _)| name.node == arg.name)
                 {
                     ctx.report_error(vec![directive.pos],
                                      format!(
@@ -40,12 +38,10 @@ impl<'a> Visitor<'a> for ProvidedNonNullArguments {
                 for arg in schema_field.arguments.values() {
                     if !arg.ty.nullable
                         && arg.default_value.is_none()
-                        && field
+                        && !field
                             .node
                             .arguments
-                            .iter()
-                            .find(|(name, _)| name.node == arg.name)
-                            .is_none()
+                            .iter().any(|(name, _)| name.node == arg.name)
                     {
                         ctx.report_error(vec![field.pos],
                                          format!(

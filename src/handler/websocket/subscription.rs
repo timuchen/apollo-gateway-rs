@@ -136,7 +136,7 @@ impl<S: RemoteGraphQLDataSource> StreamHandler<Result<ws::Message, ws::ProtocolE
                     let id = Arc::new(id.to_string());
                     let schema = self.schema.clone();
                     let stream = {
-                        let id = id.clone();
+                        let id = id;
                         use crate::planner::PlanBuilder;
                         use super::super::executor::Executor;
                         async_stream::stream! {

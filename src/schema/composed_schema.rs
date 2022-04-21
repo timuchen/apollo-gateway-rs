@@ -4,10 +4,10 @@ use std::ops::Deref;
 use indexmap::{IndexMap, IndexSet};
 use parser::types::{
     self, BaseType, ConstDirective, DirectiveDefinition, DirectiveLocation, DocumentOperations,
-    EnumType, InputObjectType, InterfaceType, ObjectType, SchemaDefinition, Selection,
+    EnumType, InputObjectType, InterfaceType, ObjectType, Selection,
     SelectionSet, ServiceDocument, Type, TypeDefinition, TypeSystemDefinition, UnionType,
 };
-use parser::{Positioned, Result};
+use parser::{Positioned};
 use value::{ConstValue, Name};
 
 use crate::schema::{CombineError, TypeExt};
@@ -173,32 +173,6 @@ pub struct ComposedSchema {
 }
 
 impl ComposedSchema {
-    pub fn parse(document: &str) -> Result<ComposedSchema> {
-        Ok(Self::new(parser::parse_schema(document)?))
-    }
-
-    pub fn new(document: ServiceDocument) -> ComposedSchema {
-        let mut composed_schema = ComposedSchema::default();
-
-        for definition in document.definitions.into_iter() {
-            match definition {
-                TypeSystemDefinition::Schema(schema) => {
-                    convert_schema_definition(&mut composed_schema, schema.node);
-                }
-                TypeSystemDefinition::Type(type_definition) => {
-                    composed_schema.types.insert(
-                        type_definition.node.name.node.clone(),
-                        convert_type_definition(type_definition.node),
-                    );
-                }
-                TypeSystemDefinition::Directive(_) => {}
-            }
-        }
-
-        finish_schema(&mut composed_schema);
-        composed_schema
-    }
-
     pub fn combine(
         federation_sdl: impl IntoIterator<Item = (String, ServiceDocument)>,
     ) -> ::std::result::Result<Self, CombineError> {
@@ -409,15 +383,6 @@ fn parse_fields(fields: &str) -> Option<SelectionSet> {
             DocumentOperations::Single(op) => Some(op.node.selection_set.node),
             DocumentOperations::Multiple(_) => None,
         })
-}
-
-fn convert_schema_definition(
-    composed_schema: &mut ComposedSchema,
-    schema_definition: SchemaDefinition,
-) {
-    composed_schema.query_type = schema_definition.query.map(|name| name.node);
-    composed_schema.mutation_type = schema_definition.mutation.map(|name| name.node);
-    composed_schema.subscription_type = schema_definition.subscription.map(|name| name.node);
 }
 
 fn convert_type_definition(definition: TypeDefinition) -> MetaType {
