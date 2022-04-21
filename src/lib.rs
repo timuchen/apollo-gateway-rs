@@ -1,10 +1,15 @@
+mod datasource;
+mod handler;
+mod planner;
+mod schema;
+mod validation;
+
 use std::cell::Cell;
-pub use datasource::{RemoteGraphQLDataSource, Context};
-pub use graphgate_planner::{RequestData, Request, Response};
-use graphgate_handler::{ServiceRouteTable, SharedRouteTable};
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::Arc;
+pub use crate::datasource::{RemoteGraphQLDataSource, Context};
+use crate::handler::{ServiceRouteTable, SharedRouteTable};
 
 #[derive(Default)]
 pub struct GatewayServerBuilder {
@@ -47,11 +52,11 @@ pub mod actix {
     use actix_web::HttpResponse;
     use k8s_openapi::serde_json;
     use opentelemetry::trace::{FutureExt, TraceContextExt, Tracer};
-    use datasource::Context;
-    use graphgate_handler::constants::{KEY_QUERY, KEY_VARIABLES};
-    use graphgate_handler::{Protocols, Subscription};
-    use graphgate_planner::{RequestData};
-    use crate::GatewayServer;
+    use crate::{Context, GatewayServer};
+    use crate::handler::constants::{KEY_QUERY, KEY_VARIABLES};
+    use crate::handler::{Protocols, Subscription};
+    use crate::planner::RequestData;
+
     ///! Request handler
     pub async fn graphql_request(
         server: actix_web::web::Data<GatewayServer>,

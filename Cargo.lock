@@ -359,18 +359,25 @@ dependencies = [
  "actix-web-actors",
  "anyhow",
  "async-graphql",
+ "async-graphql-parser",
+ "async-graphql-value",
  "async-graphql-warp",
  "async-stream",
  "async-trait",
- "datasource",
+ "chrono",
  "fastrand",
  "futures-util",
- "graphgate-handler",
- "graphgate-planner",
+ "http",
+ "indexmap",
  "k8s-openapi",
+ "once_cell",
  "opentelemetry",
+ "reqwest",
  "serde",
+ "serde_json",
+ "thiserror",
  "tokio",
+ "tokio-tungstenite 0.16.1",
  "tracing",
  "tracing-actix-web",
  "tracing-subscriber",
@@ -590,15 +597,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bstr"
-version = "0.2.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba3569f383e8f1598449f1a423e72e99569137b47740b1da11ef19af3d5c3223"
-dependencies = [
- "memchr",
-]
-
-[[package]]
 name = "bumpalo"
 version = "3.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -812,16 +810,6 @@ checksum = "e77a43b28d0668df09411cb0bc9a8c2adc40f9a048afe863e05fd43251e8e39c"
 dependencies = [
  "cfg-if",
  "num_cpus",
-]
-
-[[package]]
-name = "datasource"
-version = "0.7.0"
-dependencies = [
- "actix-web",
- "anyhow",
- "async-trait",
- "graphgate-planner",
 ]
 
 [[package]]
@@ -1060,84 +1048,6 @@ checksum = "1583cc1656d7839fd3732b80cf4f38850336cdb9b8ded1cd399ca62958de3c99"
 dependencies = [
  "opaque-debug 0.3.0",
  "polyval",
-]
-
-[[package]]
-name = "globset"
-version = "0.4.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10463d9ff00a2a068db14231982f5132edebad0d7660cd956a1c30292dbcbfbd"
-dependencies = [
- "aho-corasick",
- "bstr",
- "fnv",
- "log",
- "regex",
-]
-
-[[package]]
-name = "graphgate-handler"
-version = "0.7.2"
-dependencies = [
- "actix",
- "actix-web",
- "actix-web-actors",
- "anyhow",
- "async-graphql-parser",
- "async-graphql-value",
- "async-stream",
- "async-trait",
- "chrono",
- "datasource",
- "futures-util",
- "graphgate-planner",
- "graphgate-schema",
- "http",
- "indexmap",
- "once_cell",
- "opentelemetry",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "tokio-stream",
- "tokio-tungstenite 0.16.1",
- "tracing",
-]
-
-[[package]]
-name = "graphgate-planner"
-version = "0.7.0"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "globset",
- "graphgate-schema",
- "graphgate-validation",
- "indexmap",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "graphgate-schema"
-version = "0.5.1"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "indexmap",
- "thiserror",
-]
-
-[[package]]
-name = "graphgate-validation"
-version = "0.5.0"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "graphgate-schema",
- "indexmap",
- "once_cell",
 ]
 
 [[package]]
