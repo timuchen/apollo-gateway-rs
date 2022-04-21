@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::Arc;
 pub use crate::datasource::{RemoteGraphQLDataSource, Context};
+pub use crate::planner::{Response, Request};
 use crate::handler::{ServiceRouteTable, SharedRouteTable};
 
 #[derive(Default)]
