@@ -1,13 +1,12 @@
 [package]
 name = "datasource"
 version = "0.7.0"
-authors = ["Sunli <scott_s829@163.com>"]
+authors = ["K0R0VA m.yarykov@gmail.com", "Sunli <scott_s829@163.com>"]
 edition = "2021"
-description = "GraphGate is Apollo Federation implemented in Rust"
+description = "apollo-gateway-rs is Apollo Federation implemented in Rust"
 license = "MIT/Apache-2.0"
-homepage = "https://github.com/async-graphql/graphgate"
-repository = "https://github.com/async-graphql/graphgate"
 keywords = ["gateway", "graphql", "federation"]
+
 
 [dependencies]
 actix-web = "4.0.1"
