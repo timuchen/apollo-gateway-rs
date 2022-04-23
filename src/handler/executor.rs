@@ -81,20 +81,21 @@ impl<'e> Executor<'e> {
                     async move {
                         let (tx, rx) = mpsc::unbounded_channel();
 
-                        futures_util::future::try_join_all(subscribe_nodes.iter().map(|node| {
+                        futures_util::future::try_join_all(subscribe_nodes.iter().filter_map(|node| {
                             let tracer = global::tracer("graphql");
+                            let varialbles = serde_json::to_string(&node.variables).ok()?;
                             let attributes = vec![
                                 KEY_SERVICE.string(node.service.to_string()),
                                 KEY_QUERY.string(node.query.to_string()),
                                 KEY_VARIABLES
-                                    .string(serde_json::to_string(&node.variables).unwrap()),
+                                    .string(varialbles),
                             ];
                             let span = tracer
                                 .span_builder(format!("subscribe [{}]", node.service))
                                 .with_attributes(attributes)
                                 .start(&tracer);
                             let cx = Context::current_with_span(span);
-                            ws_controller
+                            Some(ws_controller
                                 .subscribe(
                                     id,
                                     node.service,
@@ -102,7 +103,7 @@ impl<'e> Executor<'e> {
                                             .variables(node.variables.to_variables()),
                                     tx.clone(),
                                 )
-                                .with_context(cx)
+                                .with_context(cx))
                         }))
                             .await
                             .map(move |_| rx)
@@ -199,12 +200,25 @@ impl<'e> Executor<'e> {
         let request = fetch.to_request();
 
         let tracer = global::tracer("graphql");
+        let variables = match serde_json::to_string(&request.variables) {
+            Ok(v) => v,
+            Err(err) => {
+                let mut current_resp = self.resp.lock().await;
+                current_resp.errors.push(ServerError {
+                    message: err.to_string(),
+                    path: Default::default(),
+                    locations: Default::default(),
+                    extensions: Default::default(),
+                });
+                return;
+            }
+        };
         let span = tracer
             .span_builder(format!("fetch [{}]", fetch.service))
             .with_attributes(vec![
                 KEY_SERVICE.string(fetch.service.to_string()),
                 KEY_QUERY.string(fetch.query.to_string()),
-                KEY_VARIABLES.string(serde_json::to_string(&request.variables).unwrap()),
+                KEY_VARIABLES.string(variables),
             ])
             .start(&tracer);
         let cx = Context::current_with_span(span);
@@ -421,12 +435,25 @@ impl<'e> Executor<'e> {
         let request = flatten.to_request(representations);
 
         let tracer = global::tracer("graphql");
+        let variables = match serde_json::to_string(&request.variables) {
+            Ok(v) => v,
+            Err(err) => {
+                let current_resp = &mut self.resp.lock().await;
+                current_resp.errors.push(ServerError {
+                    message: err.to_string(),
+                    path: Default::default(),
+                    locations: Default::default(),
+                    extensions: Default::default(),
+                });
+                return;
+            }
+        };
         let span = tracer
             .span_builder(format!("flatten [{}]", flatten.service))
             .with_attributes(vec![
                 KEY_SERVICE.string(flatten.service.to_string()),
                 KEY_QUERY.string(flatten.query.to_string()),
-                KEY_VARIABLES.string(serde_json::to_string(&request.variables).unwrap()),
+                KEY_VARIABLES.string(variables),
                 KEY_PATH.string(flatten.path.to_string()),
             ])
             .start(&tracer);

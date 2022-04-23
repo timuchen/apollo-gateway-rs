@@ -34,7 +34,7 @@ impl<S: RemoteGraphQLDataSource> Clone for SharedRouteTable<S> {
     fn clone(&self) -> Self {
         Self {
             inner: Arc::clone(&self.inner),
-            tx: self.tx.clone()
+            tx: self.tx.clone(),
         }
     }
 }
@@ -111,7 +111,10 @@ impl<S: RemoteGraphQLDataSource> SharedRouteTable<S> {
                 let resp = route_table
                     .get_schema(service, RequestData::new(QUERY_SDL))
                     .await
-                    .map_err(|e| { tracing::error!("{e}"); e })
+                    .map_err(|e| {
+                        tracing::error!("{e}");
+                        e
+                    })
                     .with_context(|| format!("Failed to fetch SDL from '{}'.", service))?;
                 let resp: ResponseQuery =
                     value::from_value(resp.data).context("Failed to parse response.")?;
@@ -120,7 +123,7 @@ impl<S: RemoteGraphQLDataSource> SharedRouteTable<S> {
                 Ok::<_, Error>((service.to_string(), document))
             }
         }))
-        .await?;
+            .await?;
 
         let schema = ComposedSchema::combine(resp)?;
         self.inner.write().await.schema = Some(Arc::new(schema));
@@ -145,22 +148,24 @@ impl<S: RemoteGraphQLDataSource> SharedRouteTable<S> {
         let document = match tracer.in_span("parse", |_| parser::parse_query(&request.query)) {
             Ok(document) => document,
             Err(err) => {
-                return  HttpResponse::BadRequest().body(err.to_string())
+                return HttpResponse::BadRequest().body(err.to_string());
             }
         };
 
         let (composed_schema, route_table) = match self.get().await {
             Some((composed_schema, route_table)) => (composed_schema, route_table),
             _ => {
-                return
-                    HttpResponse::BadRequest().body(serde_json::to_string(&Response {
-                        data: ConstValue::Null,
-                        errors: vec![ServerError::new("Not ready.")],
-                        extensions: Default::default(),
-                        headers: Default::default(),
-                    })
-                        .unwrap())
-
+                let response = Response {
+                    data: ConstValue::Null,
+                    errors: vec![ServerError::new("Not ready.")],
+                    extensions: Default::default(),
+                    headers: Default::default(),
+                };
+                let response = match serde_json::to_string(&response) {
+                    Ok(r) => r,
+                    Err(e) => return HttpResponse::BadRequest().body(e.to_string())
+                };
+                return HttpResponse::BadRequest().body(response);
             }
         };
 
@@ -174,7 +179,11 @@ impl<S: RemoteGraphQLDataSource> SharedRouteTable<S> {
         let plan = match tracer.in_span("plan", |_| plan_builder.plan()) {
             Ok(plan) => plan,
             Err(response) => {
-                return HttpResponse::BadRequest().body(serde_json::to_string(&response).unwrap());
+                let response = match serde_json::to_string(&response) {
+                    Ok(r) => r,
+                    Err(e) => return HttpResponse::BadRequest().body(e.to_string())
+                };
+                return HttpResponse::BadRequest().body(response);
             }
         };
 
@@ -184,8 +193,11 @@ impl<S: RemoteGraphQLDataSource> SharedRouteTable<S> {
             executor.execute_query(&fetcher, &plan),
             OpenTelemetryContext::current_with_span(tracer.span_builder("execute").start(&tracer)),
         )
-        .await;
-        let response =  serde_json::to_string(&resp).unwrap();
+            .await;
+        let response = match serde_json::to_string(&resp) {
+            Ok(r) => r,
+            Err(e) => return HttpResponse::BadRequest().body(e.to_string())
+        };
         HttpResponse::Ok().body(response)
     }
 }

@@ -79,20 +79,23 @@ impl<S: RemoteGraphQLDataSource> StreamHandler<Result<ws::Message, ws::ProtocolE
                 ClientMessage::ConnectionInit { payload } if self.controller.is_none() => {
                     let context = Arc::clone(&self.context);
                     self.controller = Some(WebSocketController::new(self.route_table.clone(), payload, context));
-                    let message = serde_json::to_string(&ServerMessage::ConnectionAck).unwrap();
-                    ctx.text(message);
+                    if let Ok(message) =  serde_json::to_string(&ServerMessage::ConnectionAck) {
+                        ctx.text(message);
+                    }
                 }
                 ClientMessage::ConnectionInit { .. } => {
                     match self.protocol {
                         Protocols::SubscriptionsTransportWS => {
-                            let err_msg =
-                                serde_json::to_string(&ServerMessage::ConnectionError {
+                                let message = ServerMessage::ConnectionError {
                                     payload: ConnectionError {
                                         message: "Too many initialisation requests.",
                                     },
-                                }).unwrap();
-                            ctx.text(err_msg);
-                            ctx.stop();
+                                };
+                                match serde_json::to_string(&message) {
+                                    Ok(m) => ctx.text(m),
+                                    Err(e) => ctx.text(e.to_string())
+                                }
+                                ctx.stop();
                         }
                         Protocols::GraphQLWS => {
                             let reason = CloseReason::from(CloseCode::Unsupported);
@@ -124,11 +127,15 @@ impl<S: RemoteGraphQLDataSource> StreamHandler<Result<ws::Message, ws::ProtocolE
                                 headers: Default::default()
                             };
                             let data = ServerMessage::Data { id, payload: resp };
-                            let message = serde_json::to_string(&data).unwrap();
-                            ctx.text(message);
+                            match serde_json::to_string(&data) {
+                                Ok(m) => ctx.text(m),
+                                Err(e) => ctx.text(e.to_string())
+                            };
                             let complete = ServerMessage::Complete { id };
-                            let message = serde_json::to_string(&complete).unwrap();
-                            ctx.text(message);
+                            match serde_json::to_string(&complete) {
+                                Ok(m) => ctx.text(m),
+                                Err(e) => ctx.text(e.to_string())
+                            };
                             ctx.stop();
                             return;
                         }
@@ -176,13 +183,17 @@ impl<S: RemoteGraphQLDataSource> Handler<Event> for Subscription<S> {
         match msg {
             StreamEvent::Data(id, resp) => {
                 let data = self.protocol.next_message(&id, resp);
-                let message = serde_json::to_string(&data).unwrap();
-                ctx.text(message);
+                match serde_json::to_string(&data) {
+                    Ok(m) => ctx.text(m),
+                    Err(e) => ctx.text(e.to_string())
+                }
             }
             StreamEvent::Complete(id) => {
                 let complete = ServerMessage::Complete { id: &id };
-                let message = serde_json::to_string(&complete).unwrap();
-                ctx.text(message);
+                match serde_json::to_string(&complete) {
+                    Ok(m) => ctx.text(m),
+                    Err(e) => ctx.text(e.to_string())
+                }
             }
         }
     }
