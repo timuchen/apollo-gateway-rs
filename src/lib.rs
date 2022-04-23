@@ -28,6 +28,7 @@ pub struct GatewayServerBuilder {
 }
 
 impl GatewayServerBuilder {
+    /// Append sources. Make sure that all sources have unique name
     pub fn with_sources<S: RemoteGraphQLDataSource>(mut self, sources: impl Iterator<Item=S>) -> GatewayServerBuilder {
         let sources = sources
             .map(|source| (source.name().to_string(), Arc::new(SimpleSource { source }) as Arc<dyn GraphqlSource>))
@@ -35,6 +36,7 @@ impl GatewayServerBuilder {
         self.table.extend(sources);
         self
     }
+    /// Append sources with middleware extension. Make sure that all sources have unique name
     pub fn with_middleware_sources<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware>(mut self, sources: impl Iterator<Item=S>) -> GatewayServerBuilder {
         let sources = sources
             .map(|source| (source.name().to_string(), Arc::new(Source { source }) as Arc<dyn GraphqlSource>))
@@ -42,12 +44,14 @@ impl GatewayServerBuilder {
         self.table.extend(sources);
         self
     }
+    /// Append source. Make sure that all sources have unique name
     pub fn with_source<S: RemoteGraphQLDataSource>(mut self, source: S) -> GatewayServerBuilder {
         let name = source.name().to_owned();
         let source = Arc::new(SimpleSource { source });
         self.table.insert(name, source);
         self
     }
+    /// Append source with middleware extension. Make sure that all sources have unique name
     pub fn with_middleware_source<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware>(mut self, source: S) -> GatewayServerBuilder {
         let name = source.name().to_owned();
         let source = Arc::new(Source { source });
@@ -60,14 +64,38 @@ impl GatewayServerBuilder {
         let config = serde_json::from_reader::<_, Config<S>>(reader)?;
         Ok(config)
     }
-
+    /// Append sources from json config for example
+    /// ```json
+    /// {
+    ///     "sources": [
+    ///         {
+    ///             name: "your-source-name",
+    ///             address: "your-source-address",
+    ///         }
+    ///     ]
+    ///
+    /// }
+    /// ```
+    /// Make sure that all sources have unique name
     pub fn with_sources_from_json<S: RemoteGraphQLDataSource>(mut self, path: &str) -> anyhow::Result<GatewayServerBuilder> where for<'de> S: Deserialize<'de> {
         let config = Self::from_json::<S>(path)?;
         let sources = config.simple_sources();
         self.table.extend(sources);
         Ok(self)
     }
-
+    /// Append sources with middleware extension from json config for example
+    /// ```json
+    /// {
+    ///     "sources": [
+    ///         {
+    ///             name: "your-source-name",
+    ///             address: "your-source-address",
+    ///         }
+    ///     ]
+    ///
+    /// }
+    /// ```
+    /// Make sure that all sources have unique name
     pub fn with_middleware_sources_from_json<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware>(mut self, path: &str) -> anyhow::Result<GatewayServerBuilder> where for<'de> S: Deserialize<'de> {
         let config = Self::from_json::<S>(path)?;
         let sources = config.sources();
@@ -75,6 +103,7 @@ impl GatewayServerBuilder {
         Ok(self)
     }
 
+    /// Build a Gateway-Server. After building gateway-server will try to parse a schema from your remote sources.
     pub fn build(self) -> GatewayServer {
         let table = ServiceRouteTable::from(self.table);
         let shared_route_table = SharedRouteTable::default();
@@ -85,11 +114,30 @@ impl GatewayServerBuilder {
     }
 }
 
+/// Gateway-server will parse a schema from your remote sources, fetch request and make subscription. Don't forget to pass it into app_data. See example:
+/// ```rust
+/// async fn main() -> std::io::Result<()> {
+///     use actix_web::{App, HttpServer, web::Data};
+///     use apollo_gateway_rs::GatewayServer;
+///     let gateway_server = GatewayServer::builder()
+///         .with_source(CommonSource::new("countries", "countries.trevorblades.com", true))
+///         .build();
+///     let gateway_server = Data::new(gateway_server);
+///     HttpServer::new(move || App::new()
+///         .app_data(gateway_server.clone())
+///         .configure(configure_api)
+///     )
+///         .bind("0.0.0.0:3000")?
+///         .run()
+///         .await
+/// }
+/// ```
 pub struct GatewayServer {
     table: SharedRouteTable<Arc<dyn GraphqlSource>>,
 }
 
 impl GatewayServer {
+    /// Create a builder for server
     pub fn builder() -> GatewayServerBuilder {
         GatewayServerBuilder::default()
     }
