@@ -130,6 +130,16 @@ impl GraphqlSourceMiddleware for UserSource {
 
 You can find full example in examples/actix/authentication
 
+### Loading sources from config
+You can define your source or use a DefaultSource and load it from json file.
+```rust
+let gateway_server = GatewayServer::builder()
+    .with_sources_from_json::<DefaultSource>("sources.json")?
+    .build();
+```
+
+You can see full example in examples/actix/from_config
+
 ### Subscription support
 Apollo-gateway-rs support subscription, use apollo_gateway_rs::actix::graphql_subscription if you want it.
 
@@ -138,3 +148,5 @@ Apollo-gateway-rs support subscription, use apollo_gateway_rs::actix::graphql_su
 - [ ] Rocket
 - [ ] Warp
 - [ ] Axum
+## Contribute
+Welcome to contribute !
