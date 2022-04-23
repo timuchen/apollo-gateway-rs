@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::Arc;
 use actix_web::HttpRequest;
@@ -25,6 +26,60 @@ pub trait RemoteGraphQLDataSource: Sync + Send + 'static {
         format!("{protocol}://{address}/{path}")
     }
 }
+
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+pub struct Config<S> {
+    sources: Vec<S>,
+}
+
+/// If you want to load your sources from config you can use DefaultSource. If you not provide tls in your config default value would be false
+#[derive(Deserialize)]
+pub struct DefaultSource {
+    name: String,
+    address: String,
+    #[serde(default = "bool::default")]
+    tls: bool,
+    query_path: Option<String>,
+    subscribe_path: Option<String>,
+}
+
+impl RemoteGraphQLDataSource for DefaultSource {
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn address(&self) -> &str {
+        &self.address
+    }
+    fn tls(&self) -> bool {
+        self.tls
+    }
+    fn query_path(&self) -> Option<&str> {
+        self.query_path.as_deref()
+    }
+    fn subscribe_path(&self) -> Option<&str> {
+        self.subscribe_path.as_deref()
+    }
+}
+
+impl<S: RemoteGraphQLDataSource> Config<S> {
+    pub fn simple_sources(self) -> HashMap<String, Arc<dyn GraphqlSource>> {
+        self.sources.into_iter()
+            .map(|source| (source.name().to_string(), Arc::new(SimpleSource { source }) as Arc<dyn GraphqlSource>))
+            .collect::<HashMap<String, Arc<dyn GraphqlSource>>>()
+    }
+}
+
+impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> Config<S> {
+    pub fn sources(self) -> HashMap<String, Arc<dyn GraphqlSource>> {
+        self.sources.into_iter()
+            .map(|source| (source.name().to_string(), Arc::new(Source { source }) as Arc<dyn GraphqlSource>))
+            .collect::<HashMap<String, Arc<dyn GraphqlSource>>>()
+    }
+}
+
+
 /// Implement GraphqlSourceMiddleware for your source, if you want to modify requests to the subgraph before they're sent and modify response after it.
 #[async_trait::async_trait]
 pub trait GraphqlSourceMiddleware: Send + Sync + 'static {
@@ -176,7 +231,7 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> GraphqlSourceMiddlewa
         self.source.did_receive_response(response, ctx).await
     }
 }
-
+/// Context give you access to request data like headers, app_data and extensions.
 pub struct Context(HttpRequest);
 
 impl Context {

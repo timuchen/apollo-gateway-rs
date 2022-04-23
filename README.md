@@ -100,6 +100,7 @@ You can see full example in examples/actix/common_usage
 The gateway can modify the details of an incoming request before executing it across your subgraphs. For example, your subgraphs might all use the same authorization token to associate an incoming request with a particular user. The gateway can add that token to each operation it sends to your subgraphs.
 
 ```rust
+#[async_trait::async_trait]
 impl GraphqlSourceMiddleware for AuthSource {
     async fn did_receive_response(&self, response: &mut Response, ctx: &Context) -> anyhow::Result<()> {
         let session = ctx.get_session();

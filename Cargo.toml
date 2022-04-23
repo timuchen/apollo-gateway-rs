@@ -57,3 +57,7 @@ path = "./examples/actix/common_usage/main.rs"
 [[example]]
 name = "authentication"
 path = "examples/actix/authentication/main.rs"
+
+[[example]]
+name = "from_config"
+path = "examples/actix/from_config/main.rs"

@@ -2,7 +2,6 @@
 #[forbid(clippy::panicking_unwrap)]
 #[forbid(clippy::unnecessary_unwrap)]
 #[forbid(clippy::unwrap_in_result)]
-
 mod datasource;
 mod handler;
 mod planner;
@@ -11,10 +10,13 @@ mod validation;
 
 use std::cell::Cell;
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::BufReader;
 use std::marker::PhantomData;
 use std::sync::Arc;
-pub use crate::datasource::{RemoteGraphQLDataSource, Context, GraphqlSourceMiddleware};
-use crate::datasource::{GraphqlSource, SimpleSource, Source};
+use serde::Deserialize;
+pub use crate::datasource::{RemoteGraphQLDataSource, Context, GraphqlSourceMiddleware, DefaultSource};
+use crate::datasource::{Config, GraphqlSource, SimpleSource, Source};
 pub use crate::planner::{Response, Request};
 use crate::handler::{ServiceRouteTable, SharedRouteTable};
 
@@ -22,21 +24,55 @@ use crate::handler::{ServiceRouteTable, SharedRouteTable};
 pub struct GatewayServerBuilder {
     table: HashMap<String, Arc<dyn GraphqlSource>>,
     // Compile time check, because someone can don't use build() and push Data<GatewayServerBuilder> instead of Data<GatewayServer> to state of app
-    _marker: PhantomData<Cell<()>>
+    _marker: PhantomData<Cell<()>>,
 }
 
 impl GatewayServerBuilder {
+    pub fn with_sources<S: RemoteGraphQLDataSource>(mut self, sources: impl Iterator<Item=S>) -> GatewayServerBuilder {
+        let sources = sources
+            .map(|source| (source.name().to_string(), Arc::new(SimpleSource { source }) as Arc<dyn GraphqlSource>))
+            .collect::<HashMap<String, Arc<dyn GraphqlSource>>>();
+        self.table.extend(sources);
+        self
+    }
+    pub fn with_middleware_sources<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware>(mut self, sources: impl Iterator<Item=S>) -> GatewayServerBuilder {
+        let sources = sources
+            .map(|source| (source.name().to_string(), Arc::new(Source { source }) as Arc<dyn GraphqlSource>))
+            .collect::<HashMap<String, Arc<dyn GraphqlSource>>>();
+        self.table.extend(sources);
+        self
+    }
     pub fn with_source<S: RemoteGraphQLDataSource>(mut self, source: S) -> GatewayServerBuilder {
         let name = source.name().to_owned();
-        let source = Arc::new(SimpleSource {source});
+        let source = Arc::new(SimpleSource { source });
         self.table.insert(name, source);
         self
     }
     pub fn with_middleware_source<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware>(mut self, source: S) -> GatewayServerBuilder {
         let name = source.name().to_owned();
-        let source = Arc::new(Source {source});
+        let source = Arc::new(Source { source });
         self.table.insert(name, source);
         self
+    }
+    fn from_json<S>(path: &str) -> anyhow::Result<Config<S>> where for<'de> S: Deserialize<'de> {
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+        let config = serde_json::from_reader::<_, Config<S>>(reader)?;
+        Ok(config)
+    }
+
+    pub fn with_sources_from_json<S: RemoteGraphQLDataSource>(mut self, path: &str) -> anyhow::Result<GatewayServerBuilder> where for<'de> S: Deserialize<'de> {
+        let config = Self::from_json::<S>(path)?;
+        let sources = config.simple_sources();
+        self.table.extend(sources);
+        Ok(self)
+    }
+
+    pub fn with_middleware_sources_from_json<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware>(mut self, path: &str) -> anyhow::Result<GatewayServerBuilder> where for<'de> S: Deserialize<'de> {
+        let config = Self::from_json::<S>(path)?;
+        let sources = config.sources();
+        self.table.extend(sources);
+        Ok(self)
     }
 
     pub fn build(self) -> GatewayServer {
@@ -91,6 +127,7 @@ pub mod actix {
         );
         server.table.query(request, ctx).with_context(query).await
     }
+
     /// Subscription handler
     pub async fn graphql_subscription(
         server: actix_web::web::Data<GatewayServer>,
