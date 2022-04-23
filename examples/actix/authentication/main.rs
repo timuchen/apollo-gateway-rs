@@ -62,7 +62,6 @@ mod auth_source {
     use apollo_gateway_rs::{Context, GraphqlSourceMiddleware, RemoteGraphQLDataSource, Response};
     use crate::jwt::create_jwt;
 
-    #[derive(Clone, Default)]
     pub struct AuthSource {
         pub(crate) name: String,
         pub(crate) addr: String,
@@ -207,8 +206,6 @@ mod jwt {
 mod user_source {
     use apollo_gateway_rs::{Context, GraphqlSourceMiddleware, RemoteGraphQLDataSource, Request};
     use crate::user_middleware::{UserExt, UserId};
-
-    #[derive(Default)]
     pub struct UserSource {
         pub(crate) name: String,
         pub(crate) addr: String,
