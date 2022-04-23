@@ -122,7 +122,7 @@ impl RemoteGraphQLDataSource for AuthSource {
 }
 
 #[async_trait::async_trait]
-impl RemoteGraphQLDataSource for CommonSource {
+impl RemoteGraphQLDataSource for UserSource {
     fn name(&self) -> &str {
         &self.name
     }
@@ -143,6 +143,8 @@ impl RemoteGraphQLDataSource for CommonSource {
     }
 }
 ```
+
+You can find full example in examples/actix/authentication
 
 ### Subscription support
 Apollo-gateway-rs support subscription, use apollo_gateway_rs::actix::graphql_subscription if you want it.
