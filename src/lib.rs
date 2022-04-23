@@ -1,3 +1,8 @@
+#[forbid(clippy::unwrap_used)]
+#[forbid(clippy::panicking_unwrap)]
+#[forbid(clippy::unnecessary_unwrap)]
+#[forbid(clippy::unwrap_in_result)]
+
 mod datasource;
 mod handler;
 mod planner;
