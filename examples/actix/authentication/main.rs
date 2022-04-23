@@ -40,8 +40,8 @@ fn init_tracing() {
 async fn main() -> std::io::Result<()> {
     init_tracing();
     let gateway_server = GatewayServer::builder()
-        .with_source(UserSource::new("user-service", "user-service:8080"))
-        .with_source(AuthSource::new("auth-service", "auth-service:8085"))
+        .with_middleware_source(UserSource::new("user-service", "user-service:8080"))
+        .with_middleware_source(AuthSource::new("auth-service", "auth-service:8085"))
         .build();
     let gateway_server = Data::new(gateway_server);
     let key = Key::generate();
@@ -59,7 +59,7 @@ async fn main() -> std::io::Result<()> {
 
 mod auth_source {
     use actix_session::SessionExt;
-    use apollo_gateway_rs::{Context, RemoteGraphQLDataSource, Response};
+    use apollo_gateway_rs::{Context, GraphqlSourceMiddleware, RemoteGraphQLDataSource, Response};
     use crate::jwt::create_jwt;
 
     #[derive(Clone, Default)]
@@ -77,7 +77,6 @@ mod auth_source {
         }
     }
 
-    #[async_trait::async_trait]
     impl RemoteGraphQLDataSource for AuthSource {
         fn name(&self) -> &str {
             &self.name
@@ -85,7 +84,10 @@ mod auth_source {
         fn address(&self) -> &str {
             &self.addr
         }
+    }
 
+    #[async_trait::async_trait]
+    impl GraphqlSourceMiddleware for AuthSource {
         async fn did_receive_response(&self, response: &mut Response, ctx: &Context) -> anyhow::Result<()> {
             let session = ctx.get_session();
             if let Some(jwt) = response.headers.get("user-id")
@@ -172,6 +174,7 @@ mod user_middleware {
 mod jwt {
     use jsonwebtoken::{Algorithm, encode, EncodingKey, Header, decode, DecodingKey, TokenData, Validation};
     use serde::{Serialize, Deserialize};
+
     const JWT_SECRET: &[u8; 6] = b"secret";
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -202,7 +205,7 @@ mod jwt {
 }
 
 mod user_source {
-    use apollo_gateway_rs::{Context, RemoteGraphQLDataSource, Request};
+    use apollo_gateway_rs::{Context, GraphqlSourceMiddleware, RemoteGraphQLDataSource, Request};
     use crate::user_middleware::{UserExt, UserId};
 
     #[derive(Default)]
@@ -221,14 +224,15 @@ mod user_source {
     }
 
 
-    #[async_trait::async_trait]
     impl RemoteGraphQLDataSource for UserSource {
         fn name(&self) -> &str {
             &self.name
         }
-        fn address(&self) -> &str {
-            &self.addr
-        }
+        fn address(&self) -> &str { &self.addr }
+    }
+
+    #[async_trait::async_trait]
+    impl GraphqlSourceMiddleware for UserSource {
         async fn will_send_request(&self, request: &mut Request, ctx: &Context) -> anyhow::Result<()> {
             if let Some(UserId(user_id)) = ctx.user_id() {
                 request.headers.insert("user-id".to_string(), user_id.to_string());

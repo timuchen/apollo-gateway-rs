@@ -67,7 +67,6 @@ mod common_source {
         }
     }
 
-    #[async_trait::async_trait]
     impl RemoteGraphQLDataSource for CommonSource {
         fn name(&self) -> &str {
             &self.name

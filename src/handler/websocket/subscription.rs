@@ -6,11 +6,11 @@ use actix_web_actors::ws;
 use actix_web_actors::ws::{CloseCode, CloseReason, Message, ProtocolError};
 use value::ConstValue;
 use crate::planner::{Response, ServerError};
-use crate::{RemoteGraphQLDataSource, Context, ServiceRouteTable};
+use crate::{RemoteGraphQLDataSource, Context, ServiceRouteTable, GraphqlSourceMiddleware};
 use super::protocol::{ClientMessage, ConnectionError, ServerMessage};
 use super::{Protocols, WebSocketController, grouped_stream::StreamEvent};
 
-pub struct Subscription<S: RemoteGraphQLDataSource> {
+pub struct Subscription<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> {
     schema: Arc<ComposedSchema>,
     route_table: Arc<ServiceRouteTable<S>>,
     context: Arc<Context>,
@@ -19,7 +19,7 @@ pub struct Subscription<S: RemoteGraphQLDataSource> {
     last_heartbeat: Instant
 }
 
-impl<S: RemoteGraphQLDataSource> Subscription<S> {
+impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> Subscription<S> {
     pub fn new(schema: Arc<ComposedSchema>, route_table: Arc<ServiceRouteTable<S>>, context: Arc<Context>, protocol: Protocols) -> Self {
         let controller = None;
         let last_heartbeat = Instant::now();
@@ -37,7 +37,7 @@ impl<S: RemoteGraphQLDataSource> Subscription<S> {
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
-impl<S: RemoteGraphQLDataSource> Subscription<S> {
+impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> Subscription<S> {
     fn send_heartbeats(&self, ctx: &mut ws::WebsocketContext<Self>) {
         ctx.run_interval(HEARTBEAT_INTERVAL, |actor, ctx| {
             if Instant::now().duration_since(actor.last_heartbeat) > CLIENT_TIMEOUT {
@@ -48,14 +48,14 @@ impl<S: RemoteGraphQLDataSource> Subscription<S> {
     }
 }
 
-impl<S: RemoteGraphQLDataSource> Actor for Subscription<S> {
+impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> Actor for Subscription<S> {
     type Context = ws::WebsocketContext<Self>;
     fn started(&mut self, ctx: &mut Self::Context) {
         self.send_heartbeats(ctx);
     }
 }
 
-impl<S: RemoteGraphQLDataSource> StreamHandler<Result<ws::Message, ws::ProtocolError>> for Subscription<S> {
+impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> StreamHandler<Result<ws::Message, ws::ProtocolError>> for Subscription<S> {
     fn handle(&mut self, item: Result<Message, ProtocolError>, ctx: &mut Self::Context) {
         match &item {
             Ok(Message::Ping(msg)) => {
@@ -177,7 +177,7 @@ impl<S: RemoteGraphQLDataSource> StreamHandler<Result<ws::Message, ws::ProtocolE
 }
 type Event = StreamEvent<Arc<std::string::String>, crate::planner::Response>;
 
-impl<S: RemoteGraphQLDataSource> Handler<Event> for Subscription<S> {
+impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> Handler<Event> for Subscription<S> {
     type Result = ();
     fn handle(&mut self, msg: Event, ctx: &mut Self::Context) -> Self::Result {
         match msg {

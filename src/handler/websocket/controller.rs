@@ -13,7 +13,7 @@ use tokio::time::Duration;
 use tokio_tungstenite::tungstenite::protocol::CloseFrame;
 use tokio_tungstenite::tungstenite::{Message, Result as WsResult};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
-use crate::datasource::{Context, RemoteGraphQLDataSource};
+use crate::datasource::{Context, RemoteGraphQLDataSource, GraphqlSourceMiddleware};
 
 use super::grouped_stream::{GroupedStream, StreamEvent};
 use super::protocol::{ClientMessage, Protocols, ServerMessage};
@@ -45,7 +45,7 @@ pub struct WebSocketController {
 }
 
 impl WebSocketController {
-    pub fn new<S: RemoteGraphQLDataSource>(
+    pub fn new<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware>(
         route_table: Arc<ServiceRouteTable<S>>,
         init_payload: Option<serde_json::Value>,
         ctx: Arc<Context>
@@ -109,7 +109,7 @@ struct SubscribeInfo {
     tx: mpsc::UnboundedSender<Response>,
 }
 
-struct WebSocketContext<S: RemoteGraphQLDataSource> {
+struct WebSocketContext<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> {
     route_table: Arc<ServiceRouteTable<S>>,
     init_payload: Option<serde_json::Value>,
     upstream: GroupedStream<String, SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>>,
@@ -119,7 +119,7 @@ struct WebSocketContext<S: RemoteGraphQLDataSource> {
     ctx: Arc<Context>
 }
 
-impl<S: RemoteGraphQLDataSource> WebSocketContext<S> {
+impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> WebSocketContext<S> {
     pub async fn main(mut self) {
         loop {
             tokio::select! {

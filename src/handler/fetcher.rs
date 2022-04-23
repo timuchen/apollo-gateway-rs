@@ -4,19 +4,19 @@ use crate::planner::{RequestData, Response};
 use tokio::sync::mpsc;
 use crate::datasource::{Context, RemoteGraphQLDataSource};
 use crate::handler::websocket::WebSocketController;
-use crate::ServiceRouteTable;
+use crate::{GraphqlSourceMiddleware, ServiceRouteTable};
 
 #[async_trait::async_trait]
 pub trait Fetcher: Send + Sync {
     async fn query(&self, service: &str, request: RequestData) -> Result<Response>;
 }
 
-pub struct HttpFetcher<'a, S: RemoteGraphQLDataSource> {
+pub struct HttpFetcher<'a, S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> {
     router_table: &'a ServiceRouteTable<S>,
     pub ctx: Context
 }
 
-impl<'a, S: RemoteGraphQLDataSource> HttpFetcher<'a, S> {
+impl<'a, S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> HttpFetcher<'a, S> {
     pub fn new(router_table: &'a ServiceRouteTable<S>, ctx: Context) -> Self {
         Self {
             router_table,
@@ -26,7 +26,7 @@ impl<'a, S: RemoteGraphQLDataSource> HttpFetcher<'a, S> {
 }
 
 #[async_trait::async_trait]
-impl<'a, S: RemoteGraphQLDataSource> Fetcher for HttpFetcher<'a, S> {
+impl<'a, S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> Fetcher for HttpFetcher<'a, S> {
     async fn query(&self, service: &str, request: RequestData) -> Result<Response> {
         self.router_table
             .query(service, request, &self.ctx)

@@ -13,24 +13,32 @@ use std::cell::Cell;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::Arc;
-pub use crate::datasource::{RemoteGraphQLDataSource, Context};
+pub use crate::datasource::{RemoteGraphQLDataSource, Context, GraphqlSourceMiddleware};
+use crate::datasource::{GraphqlSource, SimpleSource, Source};
 pub use crate::planner::{Response, Request};
 use crate::handler::{ServiceRouteTable, SharedRouteTable};
 
 #[derive(Default)]
 pub struct GatewayServerBuilder {
-    table: HashMap<String, Arc<dyn RemoteGraphQLDataSource>>,
+    table: HashMap<String, Arc<dyn GraphqlSource>>,
     // Compile time check, because someone can don't use build() and push Data<GatewayServerBuilder> instead of Data<GatewayServer> to state of app
     _marker: PhantomData<Cell<()>>
 }
 
 impl GatewayServerBuilder {
-    pub fn with_source<S: RemoteGraphQLDataSource>(mut self, s: S) -> Self {
-        let name = s.name().to_owned();
-        let boxed = Arc::new(s);
-        self.table.insert(name, boxed);
+    pub fn with_source<S: RemoteGraphQLDataSource>(mut self, source: S) -> GatewayServerBuilder {
+        let name = source.name().to_owned();
+        let source = Arc::new(SimpleSource {source});
+        self.table.insert(name, source);
         self
     }
+    pub fn with_middleware_source<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware>(mut self, source: S) -> GatewayServerBuilder {
+        let name = source.name().to_owned();
+        let source = Arc::new(Source {source});
+        self.table.insert(name, source);
+        self
+    }
+
     pub fn build(self) -> GatewayServer {
         let table = ServiceRouteTable::from(self.table);
         let shared_route_table = SharedRouteTable::default();
@@ -42,7 +50,7 @@ impl GatewayServerBuilder {
 }
 
 pub struct GatewayServer {
-    table: SharedRouteTable<Arc<dyn RemoteGraphQLDataSource>>,
+    table: SharedRouteTable<Arc<dyn GraphqlSource>>,
 }
 
 impl GatewayServer {

@@ -11,26 +11,27 @@ use tokio::sync::{mpsc, RwLock};
 use tokio::time::{Duration, Instant};
 use value::ConstValue;
 use crate::datasource::RemoteGraphQLDataSource;
+use crate::GraphqlSourceMiddleware;
 
 use super::executor::Executor;
 use super::fetcher::HttpFetcher;
 use super::service_route::ServiceRouteTable;
 
-enum Command<S: RemoteGraphQLDataSource> {
+enum Command<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> {
     Change(ServiceRouteTable<S>),
 }
 
-struct Inner<S: RemoteGraphQLDataSource> {
+struct Inner<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> {
     schema: Option<Arc<ComposedSchema>>,
     route_table: Option<Arc<ServiceRouteTable<S>>>,
 }
 
-pub struct SharedRouteTable<S: RemoteGraphQLDataSource> {
+pub struct SharedRouteTable<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> {
     inner: Arc<RwLock<Inner<S>>>,
     tx: mpsc::UnboundedSender<Command<S>>,
 }
 
-impl<S: RemoteGraphQLDataSource> Clone for SharedRouteTable<S> {
+impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> Clone for SharedRouteTable<S> {
     fn clone(&self) -> Self {
         Self {
             inner: Arc::clone(&self.inner),
@@ -39,7 +40,7 @@ impl<S: RemoteGraphQLDataSource> Clone for SharedRouteTable<S> {
     }
 }
 
-impl<S: RemoteGraphQLDataSource> Default for SharedRouteTable<S> {
+impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> Default for SharedRouteTable<S> {
     fn default() -> Self {
         let (tx, rx) = mpsc::unbounded_channel();
         let shared_route_table = Self {
@@ -57,7 +58,7 @@ impl<S: RemoteGraphQLDataSource> Default for SharedRouteTable<S> {
     }
 }
 
-impl<S: RemoteGraphQLDataSource> SharedRouteTable<S> {
+impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> SharedRouteTable<S> {
     async fn update_loop(self, mut rx: mpsc::UnboundedReceiver<Command<S>>) {
         let mut update_interval = tokio::time::interval_at(
             Instant::now() + Duration::from_secs(3),
