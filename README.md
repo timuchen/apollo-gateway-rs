@@ -1,7 +1,24 @@
-# Apollo-gateway-rs
-
 # Apollo-gateway-rs is [Apollo Federation](https://www.apollographql.com/apollo-federation) implemented in Rust.
 
+<div align="center">
+  <!-- Crates version -->
+  <a href="https://crates.io/crates/apollo-gateway-rs">
+    <img src="https://img.shields.io/crates/v/apollo-gateway-rs.svg?style=flat-square"
+    alt="Crates.io version" />
+  </a>
+  <!-- Downloads -->
+  <a href="https://crates.io/crates/apollo-gateway-rs">
+    <img src="https://img.shields.io/crates/d/apollo-gateway-rs.svg?style=flat-square"
+      alt="Download" />
+  </a>
+  <!-- docs.rs docs -->
+  <a href="https://docs.rs/apollo-gateway-rs">
+    <img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square"
+      alt="docs.rs docs" />
+  </a>
+</div>
+
+Please create issue if you have a question or find a bug or need a feature.
 ## Quick start
 
 Define your remote source and implement RemoteGraphQLDataSource for it
