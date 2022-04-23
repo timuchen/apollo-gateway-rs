@@ -25,15 +25,15 @@ pub trait RemoteGraphQLDataSource: Sync + Send + 'static {
         format!("{protocol}://{address}/{path}")
     }
 }
-
+/// Implement GraphqlSourceMiddleware for your source, if you want to modify requests to the subgraph before they're sent and modify response after it.
 #[async_trait::async_trait]
 pub trait GraphqlSourceMiddleware: Send + Sync + 'static {
-    /// Override willSendRequest to modify your gateway's requests to the subgraph before they're sent.
+    /// Override will_send_request to modify your gateway's requests to the subgraph before they're sent.
     #[allow(unused_variables)]
     async fn will_send_request(&self, request: &mut Request, ctx: &Context) -> anyhow::Result<()> {
         Ok(())
     }
-    /// Override willSendRequest to modify your gateway's requests to the subgraph before they're sent.
+    /// Override did_receive_response to modify your gateway's response after request to the subgraph. It will not modify response of subscription.
     #[allow(unused_variables)]
     async fn did_receive_response(&self, response: &mut Response, ctx: &Context) -> anyhow::Result<()> {
         Ok(())
@@ -41,24 +41,31 @@ pub trait GraphqlSourceMiddleware: Send + Sync + 'static {
 }
 
 impl RemoteGraphQLDataSource for Arc<dyn GraphqlSource> {
+    #[inline]
     fn name(&self) -> &str {
         self.deref().name()
     }
+    #[inline]
     fn address(&self) -> &str {
         self.deref().address()
     }
+    #[inline]
     fn tls(&self) -> bool {
         self.deref().tls()
     }
+    #[inline]
     fn query_path(&self) -> Option<&str> {
         self.deref().query_path()
     }
+    #[inline]
     fn subscribe_path(&self) -> Option<&str> {
         self.deref().subscribe_path()
     }
+    #[inline]
     fn url_query(&self) -> String {
         self.deref().url_query()
     }
+    #[inline]
     fn url_subscription(&self) -> String {
         self.deref().url_subscription()
     }
@@ -66,9 +73,11 @@ impl RemoteGraphQLDataSource for Arc<dyn GraphqlSource> {
 
 #[async_trait::async_trait]
 impl GraphqlSourceMiddleware for Arc<dyn GraphqlSource> {
+    #[inline]
     async fn will_send_request(&self, request: &mut Request, ctx: &Context) -> anyhow::Result<()> {
         self.deref().will_send_request(request, ctx).await
     }
+    #[inline]
     async fn did_receive_response(&self, response: &mut Response, ctx: &Context) -> anyhow::Result<()> {
         self.deref().did_receive_response(response, ctx).await
     }
@@ -87,24 +96,31 @@ pub struct SimpleSource<S: RemoteGraphQLDataSource> {
 impl<S: RemoteGraphQLDataSource> GraphqlSourceMiddleware for SimpleSource<S> {}
 
 impl<S: RemoteGraphQLDataSource> RemoteGraphQLDataSource for SimpleSource<S> {
+    #[inline]
     fn name(&self) -> &str {
         self.source.name()
     }
+    #[inline]
     fn address(&self) -> &str {
         self.source.address()
     }
+    #[inline]
     fn tls(&self) -> bool {
         self.source.tls()
     }
+    #[inline]
     fn query_path(&self) -> Option<&str> {
         self.source.query_path()
     }
+    #[inline]
     fn subscribe_path(&self) -> Option<&str> {
         self.source.subscribe_path()
     }
+    #[inline]
     fn url_query(&self) -> String {
         self.source.url_query()
     }
+    #[inline]
     fn url_subscription(&self) -> String {
         self.source.url_subscription()
     }
@@ -117,24 +133,31 @@ pub struct Source<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> {
 }
 
 impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> RemoteGraphQLDataSource for Source<S> {
+    #[inline]
     fn name(&self) -> &str {
         self.source.name()
     }
+    #[inline]
     fn address(&self) -> &str {
         self.source.address()
     }
+    #[inline]
     fn tls(&self) -> bool {
         self.source.tls()
     }
+    #[inline]
     fn query_path(&self) -> Option<&str> {
         self.source.query_path()
     }
+    #[inline]
     fn subscribe_path(&self) -> Option<&str> {
         self.source.subscribe_path()
     }
+    #[inline]
     fn url_query(&self) -> String {
         self.source.url_query()
     }
+    #[inline]
     fn url_subscription(&self) -> String {
         self.source.url_subscription()
     }
@@ -144,9 +167,11 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> GraphqlSource for Sou
 
 #[async_trait::async_trait]
 impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> GraphqlSourceMiddleware for Source<S> {
+    #[inline]
     async fn will_send_request(&self, request: &mut Request, ctx: &Context) -> anyhow::Result<()> {
         self.source.will_send_request(request, ctx).await
     }
+    #[inline]
     async fn did_receive_response(&self, response: &mut Response, ctx: &Context) -> anyhow::Result<()> {
         self.source.did_receive_response(response, ctx).await
     }
