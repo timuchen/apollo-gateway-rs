@@ -515,9 +515,8 @@ fn rewrite_errors(
         }
 
         for subpath in err.path.iter() {
-            match subpath {
-                ConstValue::String(x) => path.push(ConstValue::String(x.to_string())),
-                _ => {}
+            if let ConstValue::String(x) = subpath {
+                path.push(ConstValue::String(x.to_string()))
             }
         }
 
