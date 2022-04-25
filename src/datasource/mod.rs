@@ -79,7 +79,6 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> Config<S> {
     }
 }
 
-
 /// Implement GraphqlSourceMiddleware for your source, if you want to modify requests to the subgraph before they're sent and modify response after it.
 #[async_trait::async_trait]
 pub trait GraphqlSourceMiddleware: Send + Sync + 'static {
@@ -128,18 +127,15 @@ impl RemoteGraphQLDataSource for Arc<dyn GraphqlSource> {
 
 #[async_trait::async_trait]
 impl GraphqlSourceMiddleware for Arc<dyn GraphqlSource> {
-    #[inline]
     async fn will_send_request(&self, request: &mut Request, ctx: &Context) -> anyhow::Result<()> {
         self.deref().will_send_request(request, ctx).await
     }
-    #[inline]
     async fn did_receive_response(&self, response: &mut Response, ctx: &Context) -> anyhow::Result<()> {
         self.deref().did_receive_response(response, ctx).await
     }
 }
 
 impl GraphqlSource for Arc<dyn GraphqlSource> {}
-
 
 pub trait GraphqlSource: RemoteGraphQLDataSource + GraphqlSourceMiddleware {}
 
@@ -222,11 +218,9 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> GraphqlSource for Sou
 
 #[async_trait::async_trait]
 impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> GraphqlSourceMiddleware for Source<S> {
-    #[inline]
     async fn will_send_request(&self, request: &mut Request, ctx: &Context) -> anyhow::Result<()> {
         self.source.will_send_request(request, ctx).await
     }
-    #[inline]
     async fn did_receive_response(&self, response: &mut Response, ctx: &Context) -> anyhow::Result<()> {
         self.source.did_receive_response(response, ctx).await
     }

@@ -57,35 +57,34 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> Actor for Subscriptio
 
 impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> StreamHandler<Result<ws::Message, ws::ProtocolError>> for Subscription<S> {
     fn handle(&mut self, item: Result<Message, ProtocolError>, ctx: &mut Self::Context) {
-        match &item {
-            Ok(Message::Ping(msg)) => {
+        match item {
+            Ok(Message::Ping(ref msg)) => {
                 self.last_heartbeat = Instant::now();
                 ctx.pong(msg);
-                return;
             }
             Ok(Message::Pong(_)) => {
                 self.last_heartbeat = Instant::now();
-                return;
             }
-            _ => {}
-        }
-        if let Ok(Message::Text(ref text)) = item {
-            let bytes = text.as_bytes();
-            let client_msg = match serde_json::from_slice::<ClientMessage>(bytes) {
-                Ok(client_msg) => client_msg,
-                Err(_) => return,
-            };
-            match client_msg {
-                ClientMessage::ConnectionInit { payload } if self.controller.is_none() => {
-                    let context = Arc::clone(&self.context);
-                    self.controller = Some(WebSocketController::new(self.route_table.clone(), payload, context));
-                    if let Ok(message) =  serde_json::to_string(&ServerMessage::ConnectionAck) {
-                        ctx.text(message);
+            Ok(Message::Close(_)) | Err(_) => {
+                ctx.stop();
+            }
+            Ok(Message::Text(text)) => {
+                let bytes = text.as_bytes();
+                let client_msg = match serde_json::from_slice::<ClientMessage>(bytes) {
+                    Ok(client_msg) => client_msg,
+                    Err(_) => return,
+                };
+                match client_msg {
+                    ClientMessage::ConnectionInit { payload } if self.controller.is_none() => {
+                        let context = Arc::clone(&self.context);
+                        self.controller = Some(WebSocketController::new(self.route_table.clone(), payload, context));
+                        if let Ok(message) = serde_json::to_string(&ServerMessage::ConnectionAck) {
+                            ctx.text(message);
+                        }
                     }
-                }
-                ClientMessage::ConnectionInit { .. } => {
-                    match self.protocol {
-                        Protocols::SubscriptionsTransportWS => {
+                    ClientMessage::ConnectionInit { .. } => {
+                        match self.protocol {
+                            Protocols::SubscriptionsTransportWS => {
                                 let message = ServerMessage::ConnectionError {
                                     payload: ConnectionError {
                                         message: "Too many initialisation requests.",
@@ -96,57 +95,57 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> StreamHandler<Result<
                                     Err(e) => ctx.text(e.to_string())
                                 }
                                 ctx.stop();
-                        }
-                        Protocols::GraphQLWS => {
-                            let reason = CloseReason::from(CloseCode::Unsupported);
-                            ctx.close(Some(reason));
-                            ctx.stop();
+                            }
+                            Protocols::GraphQLWS => {
+                                let reason = CloseReason::from(CloseCode::Unsupported);
+                                ctx.close(Some(reason));
+                                ctx.stop();
+                            }
                         }
                     }
-                }
-                ClientMessage::Stop { id } => {
-                    let table = self.route_table.clone();
-                    let context = Arc::clone(&self.context);
-                    let controller = self.controller.get_or_insert_with(|| WebSocketController::new(table, None, context)).clone();
-                    let id = id.to_owned();
-                    actix::spawn(async move {
-                        controller.stop(id).await
-                    });
-                }
-                ClientMessage::Start { id, payload } | ClientMessage::Subscribe { id, payload } => {
-                    let table = self.route_table.clone();
-                    let context = Arc::clone(&self.context);
-                    let controller = self.controller.get_or_insert_with(|| WebSocketController::new(table, None, context)).clone();
-                    let document = match parser::parse_query(&payload.query) {
-                        Ok(document) => document,
-                        Err(err) => {
-                            let resp = Response {
-                                data: ConstValue::Null,
-                                errors: vec![ServerError::new(err.to_string())],
-                                extensions: Default::default(),
-                                headers: Default::default()
-                            };
-                            let data = ServerMessage::Data { id, payload: resp };
-                            match serde_json::to_string(&data) {
-                                Ok(m) => ctx.text(m),
-                                Err(e) => ctx.text(e.to_string())
-                            };
-                            let complete = ServerMessage::Complete { id };
-                            match serde_json::to_string(&complete) {
-                                Ok(m) => ctx.text(m),
-                                Err(e) => ctx.text(e.to_string())
-                            };
-                            ctx.stop();
-                            return;
-                        }
-                    };
-                    let id = Arc::new(id.to_string());
-                    let schema = self.schema.clone();
-                    let stream = {
-                        let id = id;
-                        use crate::planner::PlanBuilder;
-                        use super::super::executor::Executor;
-                        async_stream::stream! {
+                    ClientMessage::Stop { id } => {
+                        let table = self.route_table.clone();
+                        let context = Arc::clone(&self.context);
+                        let controller = self.controller.get_or_insert_with(|| WebSocketController::new(table, None, context)).clone();
+                        let id = id.to_owned();
+                        actix::spawn(async move {
+                            controller.stop(id).await
+                        });
+                    }
+                    ClientMessage::Start { id, payload } | ClientMessage::Subscribe { id, payload } => {
+                        let table = self.route_table.clone();
+                        let context = Arc::clone(&self.context);
+                        let controller = self.controller.get_or_insert_with(|| WebSocketController::new(table, None, context)).clone();
+                        let document = match parser::parse_query(&payload.query) {
+                            Ok(document) => document,
+                            Err(err) => {
+                                let resp = Response {
+                                    data: ConstValue::Null,
+                                    errors: vec![ServerError::new(err.to_string())],
+                                    extensions: Default::default(),
+                                    headers: Default::default()
+                                };
+                                let data = ServerMessage::Data { id, payload: resp };
+                                match serde_json::to_string(&data) {
+                                    Ok(m) => ctx.text(m),
+                                    Err(e) => ctx.text(e.to_string())
+                                };
+                                let complete = ServerMessage::Complete { id };
+                                match serde_json::to_string(&complete) {
+                                    Ok(m) => ctx.text(m),
+                                    Err(e) => ctx.text(e.to_string())
+                                };
+                                ctx.stop();
+                                return;
+                            }
+                        };
+                        let id = Arc::new(id.to_string());
+                        let schema = self.schema.clone();
+                        let stream = {
+                            let id = id;
+                            use crate::planner::PlanBuilder;
+                            use super::super::executor::Executor;
+                            async_stream::stream! {
                             let builder = PlanBuilder::new(&schema, document).variables(payload.variables);
                             let node = match builder.plan() {
                                 Ok(node) => node,
@@ -164,14 +163,13 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> StreamHandler<Result<
                             }
                             yield StreamEvent::Complete(id);
                         }
-                    };
-                    ctx.add_message_stream(stream);
+                        };
+                        ctx.add_message_stream(stream);
+                    }
+                    _ => {}
                 }
-                _ => {}
             }
-        }
-        if let Ok(Message::Close(_)) | Err(_) = item {
-            ctx.stop();
+            _ => {}
         }
     }
 }

@@ -54,10 +54,9 @@ impl<Source: RemoteGraphQLDataSource + GraphqlSourceMiddleware> ServiceRouteTabl
 
         let mut req = Request { headers: HashMap::new()};
 
-        let url = source.url_query();
-
         source.will_send_request(&mut req, ctx).await?;
 
+        let url = source.url_query();
         let headers = HeaderMap::try_from(&req.headers)?;
 
         let raw_resp = HTTP_CLIENT

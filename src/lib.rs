@@ -54,7 +54,7 @@ impl GatewayServerBuilder {
     /// Append source with middleware extension. Make sure that all sources have unique name
     pub fn with_middleware_source<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware>(mut self, source: S) -> GatewayServerBuilder {
         let name = source.name().to_owned();
-        let source = Arc::new(Source { source });
+        let source: Arc<dyn GraphqlSource> = Arc::new(Source { source });
         self.table.insert(name, source);
         self
     }

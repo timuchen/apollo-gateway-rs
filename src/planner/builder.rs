@@ -321,7 +321,6 @@ impl<'a> Context<'a> {
                     Some(field_definition) => field_definition,
                     None => continue,
                 };
-
                 if let Some(service) = &field_definition.service {
                     let selection_ref_set = root_group.selection_set_mut(service);
                     let mut path = ResponsePath::default();

@@ -112,10 +112,6 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> SharedRouteTable<S> {
                 let resp = route_table
                     .get_schema(service, RequestData::new(QUERY_SDL))
                     .await
-                    .map_err(|e| {
-                        tracing::error!("{e}");
-                        e
-                    })
                     .with_context(|| format!("Failed to fetch SDL from '{}'.", service))?;
                 let resp: ResponseQuery =
                     value::from_value(resp.data).context("Failed to parse response.")?;
@@ -125,6 +121,7 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> SharedRouteTable<S> {
             }
         }))
             .await?;
+
 
         let schema = ComposedSchema::combine(resp)?;
         self.inner.write().await.schema = Some(Arc::new(schema));

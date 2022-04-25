@@ -7,7 +7,7 @@ use tracing_actix_web::TracingLogger;
 use apollo_gateway_rs::{GatewayServer, actix::{graphql_request, graphql_subscription}};
 use crate::auth_source::AuthSource;
 use crate::user_middleware::{UserMiddlewareFactory};
-use crate::user_source::UserSource;
+use crate::todo_source::TodoSource;
 
 pub async fn playground() -> HttpResponse {
     let html = playground_source(GraphQLPlaygroundConfig::new("/").subscription_endpoint("/"));
@@ -40,8 +40,8 @@ fn init_tracing() {
 async fn main() -> std::io::Result<()> {
     init_tracing();
     let gateway_server = GatewayServer::builder()
-        .with_middleware_source(UserSource::new("user-service", "user-service:8080"))
-        .with_middleware_source(AuthSource::new("auth-service", "auth-service:8085"))
+        .with_middleware_source(TodoSource::new("todo-source", "0.0.0.0:8085"))
+        .with_middleware_source(AuthSource::new("auth-source", "0.0.0.0:8080"))
         .build();
     let gateway_server = Data::new(gateway_server);
     let key = Key::generate();
@@ -59,7 +59,7 @@ async fn main() -> std::io::Result<()> {
 
 mod auth_source {
     use actix_session::SessionExt;
-    use apollo_gateway_rs::{Context, GraphqlSourceMiddleware, RemoteGraphQLDataSource, Response};
+    use apollo_gateway_rs::{Context, GraphqlSourceMiddleware, RemoteGraphQLDataSource, Request, Response};
     use crate::jwt::create_jwt;
 
     pub struct AuthSource {
@@ -89,9 +89,8 @@ mod auth_source {
     impl GraphqlSourceMiddleware for AuthSource {
         async fn did_receive_response(&self, response: &mut Response, ctx: &Context) -> anyhow::Result<()> {
             let session = ctx.get_session();
-            if let Some(jwt) = response.headers.get("user-id")
-                .and_then(|header| header.parse().ok())
-                .and_then(|user_id| create_jwt(user_id).ok()) {
+            if let Some(jwt) = response.headers.get("email")
+                .and_then(|email| create_jwt(email.clone()).ok()) {
                 let _ = session.insert("auth", jwt);
             }
             Ok(())
@@ -111,17 +110,17 @@ mod user_middleware {
         service: S,
     }
 
-    #[derive(Clone, Copy)]
-    pub struct UserId(pub i32);
+    #[derive(Clone)]
+    pub struct UserEmail(pub String);
 
     pub trait UserExt {
-        fn user_id(&self) -> Option<UserId>;
+        fn user_email(&self) -> Option<UserEmail>;
     }
 
     impl UserExt for HttpRequest {
-        fn user_id(&self) -> Option<UserId> {
+        fn user_email(&self) -> Option<UserEmail> {
             let ext = self.extensions();
-            ext.get::<UserId>().cloned()
+            ext.get::<UserEmail>().cloned()
         }
     }
 
@@ -137,12 +136,12 @@ mod user_middleware {
 
         fn call(&self, req: ServiceRequest) -> Self::Future {
             let session = req.get_session();
-            if let Some(id) = session.get("auth")
+            if let Some(email) = session.get("auth")
                 .ok()
                 .flatten()
                 .and_then(|identity| decode_identity(identity).ok())
-                .map(|claims| claims.claims.id) {
-                req.extensions_mut().insert(UserId(id));
+                .map(|claims| claims.claims.email) {
+                req.extensions_mut().insert(UserEmail(email));
             }
             self.service.call(req)
         }
@@ -178,7 +177,7 @@ mod jwt {
 
     #[derive(Debug, Serialize, Deserialize)]
     pub struct Claims {
-        pub id: i32,
+        pub email: String,
         exp: usize,
     }
 
@@ -188,13 +187,13 @@ mod jwt {
                          &Validation::new(Algorithm::HS512))
     }
 
-    pub fn create_jwt(id: i32) -> anyhow::Result<String> {
+    pub fn create_jwt(email: String) -> anyhow::Result<String> {
         let expiration = chrono::Utc::now()
             .checked_add_signed(chrono::Duration::seconds(60 * 60 * 12))
             .expect("valid timestamp")
             .timestamp();
         let claims = Claims {
-            id,
+            email,
             exp: expiration as usize,
         };
         let header = Header::new(Algorithm::HS512);
@@ -203,15 +202,15 @@ mod jwt {
     }
 }
 
-mod user_source {
-    use apollo_gateway_rs::{Context, GraphqlSourceMiddleware, RemoteGraphQLDataSource, Request};
-    use crate::user_middleware::{UserExt, UserId};
-    pub struct UserSource {
+mod todo_source {
+    use apollo_gateway_rs::{Context, GraphqlSourceMiddleware, RemoteGraphQLDataSource, Request, Response};
+    use crate::user_middleware::{UserExt, UserEmail};
+    pub struct TodoSource {
         pub(crate) name: String,
         pub(crate) addr: String,
     }
 
-    impl UserSource {
+    impl TodoSource {
         pub fn new(name: &str, addr: &str) -> Self {
             Self {
                 name: name.to_owned(),
@@ -221,7 +220,7 @@ mod user_source {
     }
 
 
-    impl RemoteGraphQLDataSource for UserSource {
+    impl RemoteGraphQLDataSource for TodoSource {
         fn name(&self) -> &str {
             &self.name
         }
@@ -229,10 +228,10 @@ mod user_source {
     }
 
     #[async_trait::async_trait]
-    impl GraphqlSourceMiddleware for UserSource {
+    impl GraphqlSourceMiddleware for TodoSource {
         async fn will_send_request(&self, request: &mut Request, ctx: &Context) -> anyhow::Result<()> {
-            if let Some(UserId(user_id)) = ctx.user_id() {
-                request.headers.insert("user-id".to_string(), user_id.to_string());
+            if let Some(UserEmail(email)) = ctx.user_email() {
+                request.headers.insert("email".to_string(), email);
             }
             Ok(())
         }
