@@ -49,7 +49,10 @@ async fn main() -> std::io::Result<()> {
         .app_data(gateway_server.clone())
         .wrap(TracingLogger::default())
         .wrap(UserMiddlewareFactory::default())
-        .wrap(SessionMiddleware::new(CookieSessionStore::default(), key.clone()))
+        .wrap(SessionMiddleware::builder(CookieSessionStore::default(), key.clone())
+            .cookie_secure(false)
+            .build()
+        )
         .configure(configure_api)
     )
         .bind("0.0.0.0:3000")?
@@ -203,8 +206,10 @@ mod jwt {
 }
 
 mod todo_source {
-    use apollo_gateway_rs::{Context, GraphqlSourceMiddleware, RemoteGraphQLDataSource, Request, Response};
+    use std::collections::HashMap;
+    use apollo_gateway_rs::{Context, GraphqlSourceMiddleware, RemoteGraphQLDataSource, Request};
     use crate::user_middleware::{UserExt, UserEmail};
+
     pub struct TodoSource {
         pub(crate) name: String,
         pub(crate) addr: String,
@@ -229,9 +234,9 @@ mod todo_source {
 
     #[async_trait::async_trait]
     impl GraphqlSourceMiddleware for TodoSource {
-        async fn will_send_request(&self, request: &mut Request, ctx: &Context) -> anyhow::Result<()> {
+        async fn will_send_request(&self, request: &mut HashMap<String, String>, ctx: &Context) -> anyhow::Result<()> {
             if let Some(UserEmail(email)) = ctx.user_email() {
-                request.headers.insert("email".to_string(), email);
+                request.insert("email".to_string(), email);
             }
             Ok(())
         }

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
-use crate::planner::{Request, RequestData, Response};
+use crate::planner::{RequestData, Response};
 use http::{HeaderMap, Request as HttpRequest};
 use tokio::net::TcpStream;
 use tokio::sync::{mpsc, oneshot};
@@ -155,11 +155,11 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> WebSocketContext<S> {
 
         let url = source.url_subscription();
 
-        let mut request = Request {headers: HashMap::new()};
+        let mut headers = HashMap::new();
 
-        source.will_send_request(&mut request, &self.ctx).await?;
+        source.will_send_request(&mut headers, &self.ctx).await?;
 
-        let headers = HeaderMap::try_from(&request.headers)?;
+        let headers = HeaderMap::try_from(&headers)?;
 
         tracing::debug!(url = %url, service = service, "Connect to upstream websocket");
         let mut http_request = HttpRequest::builder()

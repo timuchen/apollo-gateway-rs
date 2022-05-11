@@ -2,9 +2,10 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use value::{ConstValue, Variables};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Request {
-    pub headers: HashMap<String, String>
+    pub headers: HashMap<String, String>,
+    pub data: RequestData
 }
 
 #[derive(Debug, Serialize, Deserialize)]

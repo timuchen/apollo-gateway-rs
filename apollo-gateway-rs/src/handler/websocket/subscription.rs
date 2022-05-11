@@ -16,55 +16,28 @@ pub struct Subscription<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> {
     context: Arc<Context>,
     controller: Option<WebSocketController>,
     protocol: Protocols,
-    last_heartbeat: Instant
 }
 
 impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> Subscription<S> {
     pub fn new(schema: Arc<ComposedSchema>, route_table: Arc<ServiceRouteTable<S>>, context: Arc<Context>, protocol: Protocols) -> Self {
         let controller = None;
-        let last_heartbeat = Instant::now();
         Self {
             schema,
             route_table,
             context,
             controller,
             protocol,
-            last_heartbeat
         }
-    }
-}
-
-const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
-const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
-
-impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> Subscription<S> {
-    fn send_heartbeats(&self, ctx: &mut ws::WebsocketContext<Self>) {
-        ctx.run_interval(HEARTBEAT_INTERVAL, |actor, ctx| {
-            if Instant::now().duration_since(actor.last_heartbeat) > CLIENT_TIMEOUT {
-                ctx.stop();
-            }
-            ctx.ping(b"");
-        });
     }
 }
 
 impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> Actor for Subscription<S> {
     type Context = ws::WebsocketContext<Self>;
-    fn started(&mut self, ctx: &mut Self::Context) {
-        self.send_heartbeats(ctx);
-    }
 }
 
 impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> StreamHandler<Result<ws::Message, ws::ProtocolError>> for Subscription<S> {
     fn handle(&mut self, item: Result<Message, ProtocolError>, ctx: &mut Self::Context) {
         match item {
-            Ok(Message::Ping(ref msg)) => {
-                self.last_heartbeat = Instant::now();
-                ctx.pong(msg);
-            }
-            Ok(Message::Pong(_)) => {
-                self.last_heartbeat = Instant::now();
-            }
             Ok(Message::Close(_)) | Err(_) => {
                 ctx.stop();
             }
@@ -146,23 +119,23 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> StreamHandler<Result<
                             use crate::planner::PlanBuilder;
                             use super::super::executor::Executor;
                             async_stream::stream! {
-                            let builder = PlanBuilder::new(&schema, document).variables(payload.variables);
-                            let node = match builder.plan() {
-                                Ok(node) => node,
-                                Err(resp) => {
-                                    yield StreamEvent::Data(Arc::clone(&id), resp);
-                                    yield StreamEvent::Complete(id);
-                                    return;
+                                let builder = PlanBuilder::new(&schema, document).variables(payload.variables);
+                                let node = match builder.plan() {
+                                    Ok(node) => node,
+                                    Err(resp) => {
+                                        yield StreamEvent::Data(Arc::clone(&id), resp);
+                                        yield StreamEvent::Complete(id);
+                                        return;
+                                    }
+                                };
+                                let executor = Executor::new(&schema);
+                                let mut stream = executor.execute_stream(controller.clone(), &id, &node).await;
+                                use futures_util::StreamExt;
+                                while let Some(item) = stream.next().await {
+                                    yield StreamEvent::Data(Arc::clone(&id), item);
                                 }
-                            };
-                            let executor = Executor::new(&schema);
-                            let mut stream = executor.execute_stream(controller.clone(), &id, &node).await;
-                            use futures_util::StreamExt;
-                            while let Some(item) = stream.next().await {
-                                yield StreamEvent::Data(Arc::clone(&id), item);
+                                yield StreamEvent::Complete(id);
                             }
-                            yield StreamEvent::Complete(id);
-                        }
                         };
                         ctx.add_message_stream(stream);
                     }

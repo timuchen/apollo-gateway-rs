@@ -2,12 +2,12 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::ops::{Deref, DerefMut};
 use futures_util::TryFutureExt;
-use crate::planner::{RequestData, Request, Response};
+use crate::planner::{RequestData, Response};
 use http::HeaderMap;
 use once_cell::sync::Lazy;
 use crate::datasource::{Context, RemoteGraphQLDataSource, GraphqlSourceMiddleware};
+use crate::Request;
 
-static HTTP_CLIENT: Lazy<reqwest::Client> = Lazy::new(Default::default);
 
 ///
 /// The key is the service name.
@@ -52,28 +52,11 @@ impl<Source: RemoteGraphQLDataSource + GraphqlSourceMiddleware> ServiceRouteTabl
             anyhow::anyhow!("Service '{}' is not defined in the routing table.", service)
         })?;
 
-        let mut req = Request { headers: HashMap::new()};
+        let mut headers = HashMap::new();
 
-        source.will_send_request(&mut req, ctx).await?;
+        source.will_send_request(&mut headers, ctx).await?;
 
-        let url = source.url_query();
-        let headers = HeaderMap::try_from(&req.headers)?;
-
-        let raw_resp = HTTP_CLIENT
-            .post(&url)
-            .headers(headers)
-            .json(&request)
-            .send()
-            .and_then(|res| async move { res.error_for_status() })
-            .await?;
-
-        let headers = raw_resp.headers().iter()
-            .filter_map(|(name, value)| value.to_str().ok().map(|value| (name.as_str().to_string(), value.to_string())))
-            .collect();
-
-        let mut resp = raw_resp.json::<Response>().await?;
-
-        resp.headers = headers;
+        let mut resp = source.fetch(Request { headers, data: request}).await?;
 
         source.did_receive_response(&mut resp, ctx).await?;
 
@@ -88,18 +71,7 @@ impl<Source: RemoteGraphQLDataSource + GraphqlSourceMiddleware> ServiceRouteTabl
         let source = self.0.get(service).ok_or_else(|| {
             anyhow::anyhow!("Service '{}' is not defined in the routing table.", service)
         })?;
-        let address= source.address();
-        let protocol = source.tls().then(|| "https").unwrap_or("http");
-        let path = source.query_path().unwrap_or("");
-        let url = format!("{protocol}://{address}/{path}") ;
-        let raw_resp = HTTP_CLIENT
-            .post(&url)
-            .json(&request)
-            .send()
-            .and_then(|res| async move { res.error_for_status() })
-            .await;
-        let raw_resp = raw_resp?;
-        let resp = raw_resp.json::<Response>().await?;
+        let resp = source.fetch(Request {headers:  HashMap::with_capacity(0) , data: request}).await?;
         Ok(resp)
     }
 }

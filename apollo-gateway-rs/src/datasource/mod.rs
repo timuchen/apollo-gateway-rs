@@ -1,8 +1,13 @@
 use std::collections::HashMap;
 use std::ops::Deref;
+use std::pin::Pin;
 use std::sync::Arc;
+use actix::dev::Stream;
 use actix_web::HttpRequest;
-use crate::planner::{Request, Response};
+use futures_util::TryFutureExt;
+use http::HeaderMap;
+use once_cell::sync::Lazy;
+use crate::planner::{Response};
 
 /// Represents a connection between your federated gateway and one of your subgraphs.
 pub trait RemoteGraphQLDataSource: Sync + Send + 'static {
@@ -28,6 +33,7 @@ pub trait RemoteGraphQLDataSource: Sync + Send + 'static {
 }
 
 use serde::Deserialize;
+use crate::Request;
 
 #[derive(Deserialize)]
 pub struct Config<S> {
@@ -79,18 +85,42 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> Config<S> {
     }
 }
 
+
+static HTTP_CLIENT: Lazy<reqwest::Client> = Lazy::new(Default::default);
+
+type SubscriptionStream = Pin<Box<dyn Stream<Item = anyhow::Result<Response>>>>;
 /// Implement GraphqlSourceMiddleware for your source, if you want to modify requests to the subgraph before they're sent and modify response after it.
 #[async_trait::async_trait]
-pub trait GraphqlSourceMiddleware: Send + Sync + 'static {
+pub trait GraphqlSourceMiddleware: Send + Sync + 'static + RemoteGraphQLDataSource {
     /// Override will_send_request to modify your gateway's requests to the subgraph before they're sent.
     #[allow(unused_variables)]
-    async fn will_send_request(&self, request: &mut Request, ctx: &Context) -> anyhow::Result<()> {
+    async fn will_send_request(&self, request: &mut HashMap<String, String>, ctx: &Context) -> anyhow::Result<()> {
         Ok(())
     }
     /// Override did_receive_response to modify your gateway's response after request to the subgraph. It will not modify response of subscription.
     #[allow(unused_variables)]
     async fn did_receive_response(&self, response: &mut Response, ctx: &Context) -> anyhow::Result<()> {
         Ok(())
+    }
+    async fn fetch(&self, request: Request) -> anyhow::Result<Response> {
+        let url = self.url_query();
+        let headers = HeaderMap::try_from(&request.headers)?;
+        let raw_resp = HTTP_CLIENT
+            .post(&url)
+            .headers(headers)
+            .json(&request.data)
+            .send()
+            .and_then(|res| async move { res.error_for_status() })
+            .await?;
+        let headers = raw_resp.headers().iter()
+            .filter_map(|(name, value)| value.to_str().ok().map(|value| (name.as_str().to_string(), value.to_string())))
+            .collect();
+        let mut resp = raw_resp.json::<Response>().await?;
+        resp.headers = headers;
+        Ok(resp)
+    }
+    async fn subscribe(&self, request: Request) -> SubscriptionStream {
+        unimplemented!()
     }
 }
 
@@ -127,11 +157,17 @@ impl RemoteGraphQLDataSource for Arc<dyn GraphqlSource> {
 
 #[async_trait::async_trait]
 impl GraphqlSourceMiddleware for Arc<dyn GraphqlSource> {
-    async fn will_send_request(&self, request: &mut Request, ctx: &Context) -> anyhow::Result<()> {
+    async fn will_send_request(&self, request: &mut HashMap<String, String>, ctx: &Context) -> anyhow::Result<()> {
         self.deref().will_send_request(request, ctx).await
     }
     async fn did_receive_response(&self, response: &mut Response, ctx: &Context) -> anyhow::Result<()> {
         self.deref().did_receive_response(response, ctx).await
+    }
+    async fn fetch(&self, request: Request) -> anyhow::Result<Response> {
+        self.deref().fetch(request).await
+    }
+    async fn subscribe(&self, request: Request) -> SubscriptionStream {
+        self.deref().subscribe(request).await
     }
 }
 
@@ -218,11 +254,17 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> GraphqlSource for Sou
 
 #[async_trait::async_trait]
 impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> GraphqlSourceMiddleware for Source<S> {
-    async fn will_send_request(&self, request: &mut Request, ctx: &Context) -> anyhow::Result<()> {
+    async fn will_send_request(&self, request: &mut HashMap<String, String>, ctx: &Context) -> anyhow::Result<()> {
         self.source.will_send_request(request, ctx).await
     }
     async fn did_receive_response(&self, response: &mut Response, ctx: &Context) -> anyhow::Result<()> {
         self.source.did_receive_response(response, ctx).await
+    }
+    async fn fetch(&self, request: Request) -> anyhow::Result<Response> {
+        self.source.fetch(request).await
+    }
+    async fn subscribe(&self, request: Request) -> SubscriptionStream {
+        self.source.subscribe(request).await
     }
 }
 /// Context give you access to request data like headers, app_data and extensions.
