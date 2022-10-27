@@ -295,10 +295,7 @@ impl ComposedSchema {
                                 .insert(meta_type.name.clone(), meta_type);
                         }
                     }
-                    TypeSystemDefinition::Schema(_schema_definition) => {
-                        return Err(CombineError::SchemaIsNotAllowed)
-                    }
-                    TypeSystemDefinition::Directive(_directive_definition) => {}
+                    _ => {}
                 }
             }
         }
