@@ -55,7 +55,8 @@ mod api {
         let schema = schema.get_ref();
         let mut data = async_graphql::context::Data::default();
         data.insert(email);
-        GraphQLSubscription::new(schema.clone()).with_data(data).start(&req, payload)
+        GraphQLSubscription::new(schema.clone())
+            .with_data(data).start(&req, payload)
     }
 
     async fn graphql(

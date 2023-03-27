@@ -159,6 +159,8 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> WebSocketContext<S> {
 
         source.will_send_request(&mut headers, &self.ctx).await?;
 
+        source.on_connection_init(&mut self.init_payload, &self.ctx).await?;
+
         let headers = HeaderMap::try_from(&headers)?;
 
         tracing::debug!(url = %url, service = service, "Connect to upstream websocket");
@@ -179,9 +181,8 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> WebSocketContext<S> {
         stream
             .send(Message::Text(
                 serde_json::to_string(&ClientMessage::ConnectionInit {
-                    payload: self.init_payload.clone(),
-                })
-                .unwrap(),
+                    payload: self.init_payload.take(),
+                })?,
             ))
             .await?;
 

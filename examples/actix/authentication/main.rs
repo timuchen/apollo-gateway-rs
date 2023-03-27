@@ -207,6 +207,7 @@ mod jwt {
 
 mod todo_source {
     use std::collections::HashMap;
+    use serde_json::Value;
     use apollo_gateway_rs::{Context, GraphqlSourceMiddleware, RemoteGraphQLDataSource};
     use crate::user_middleware::{UserExt, UserEmail};
 
@@ -238,6 +239,10 @@ mod todo_source {
             if let Some(UserEmail(email)) = ctx.user_email() {
                 request.insert("email".to_string(), email);
             }
+            Ok(())
+        }
+        async fn on_connection_init(&self, message: &mut Option<Value>, ctx: &Context) -> anyhow::Result<()> {
+            println!("{:?}", message);
             Ok(())
         }
     }

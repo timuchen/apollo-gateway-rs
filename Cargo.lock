@@ -378,7 +378,7 @@ checksum = "08f9b8508dccb7687a1d6c4ce66b2b0ecef467c94667de27d8d7fe1f8d2a9cdc"
 
 [[package]]
 name = "apollo-gateway-rs"
-version = "0.7.9"
+version = "0.7.91"
 dependencies = [
  "actix",
  "actix-web",

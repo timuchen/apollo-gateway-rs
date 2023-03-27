@@ -35,6 +35,7 @@ pub trait RemoteGraphQLDataSource: Sync + Send + 'static {
 }
 
 use serde::Deserialize;
+use serde_json::Value;
 use crate::Request;
 
 #[derive(Deserialize)]
@@ -104,6 +105,12 @@ pub trait GraphqlSourceMiddleware: Send + Sync + 'static + RemoteGraphQLDataSour
     async fn did_receive_response(&self, response: &mut Response, ctx: &Context) -> anyhow::Result<()> {
         Ok(())
     }
+
+    #[allow(unused_variables)]
+    async fn on_connection_init(&self, message: &mut Option<Value>, ctx: &Context) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     async fn fetch(&self, request: Request) -> anyhow::Result<Response> {
         let url = self.url_query();
         let headers = HeaderMap::try_from(&request.headers)?;
@@ -164,6 +171,9 @@ impl GraphqlSourceMiddleware for Arc<dyn GraphqlSource> {
     }
     async fn did_receive_response(&self, response: &mut Response, ctx: &Context) -> anyhow::Result<()> {
         self.deref().did_receive_response(response, ctx).await
+    }
+    async fn on_connection_init(&self, message: &mut Option<Value>, ctx: &Context) -> anyhow::Result<()> {
+        self.deref().on_connection_init(message, ctx).await
     }
     async fn fetch(&self, request: Request) -> anyhow::Result<Response> {
         self.deref().fetch(request).await
@@ -258,6 +268,9 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> GraphqlSource for Sou
 impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> GraphqlSourceMiddleware for Source<S> {
     async fn will_send_request(&self, request: &mut HashMap<String, String>, ctx: &Context) -> anyhow::Result<()> {
         self.source.will_send_request(request, ctx).await
+    }
+    async fn on_connection_init(&self, message: &mut Option<Value>, ctx: &Context) -> anyhow::Result<()> {
+        self.source.on_connection_init(message, ctx).await
     }
     async fn did_receive_response(&self, response: &mut Response, ctx: &Context) -> anyhow::Result<()> {
         self.source.did_receive_response(response, ctx).await
