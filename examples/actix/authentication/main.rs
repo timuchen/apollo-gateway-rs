@@ -62,7 +62,7 @@ async fn main() -> std::io::Result<()> {
 
 mod auth_source {
     use actix_session::SessionExt;
-    use apollo_gateway_rs::{Context, GraphqlSourceMiddleware, RemoteGraphQLDataSource, Request, Response};
+    use apollo_gateway_rs::{Context, GraphqlSourceMiddleware, RemoteGraphQLDataSource, Response};
     use crate::jwt::create_jwt;
 
     pub struct AuthSource {
@@ -207,7 +207,7 @@ mod jwt {
 
 mod todo_source {
     use std::collections::HashMap;
-    use apollo_gateway_rs::{Context, GraphqlSourceMiddleware, RemoteGraphQLDataSource, Request};
+    use apollo_gateway_rs::{Context, GraphqlSourceMiddleware, RemoteGraphQLDataSource};
     use crate::user_middleware::{UserExt, UserEmail};
 
     pub struct TodoSource {

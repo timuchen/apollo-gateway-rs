@@ -59,8 +59,3 @@ serde_json = "1.0.81"
 prost = "0.10.3"
 serde = {version = "1.0.137", features = ["derive"]}
 apollo-gateway-rs = { path = "../apollo-gateway-rs" }
-graphtonic = {path = "../graphtonic"}
-graphql-types = {path = "../graphql-types"}
-
-[build-dependencies]
-tonic-build = "0.7.2"
