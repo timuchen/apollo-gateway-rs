@@ -1,3 +1,5 @@
+#![allow(clippy::obfuscated_if_else)]
+
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::pin::Pin;
@@ -20,13 +22,13 @@ pub trait RemoteGraphQLDataSource: Sync + Send + 'static {
     fn subscribe_path(&self) -> Option<&str> { None }
     fn url_query(&self) -> String {
         let address = self.address();
-        let protocol = self.tls().then(|| "https").unwrap_or("http");
+        let protocol = self.tls().then_some("https").unwrap_or("http");
         let path = self.query_path().unwrap_or("");
         format!("{protocol}://{address}/{path}")
     }
     fn url_subscription(&self) -> String {
         let address = self.address();
-        let protocol = self.tls().then(|| "wss").unwrap_or("ws");
+        let protocol = self.tls().then_some("wss").unwrap_or("ws");
         let path = self.subscribe_path().unwrap_or("");
         format!("{protocol}://{address}/{path}")
     }
@@ -119,7 +121,7 @@ pub trait GraphqlSourceMiddleware: Send + Sync + 'static + RemoteGraphQLDataSour
         resp.headers = headers;
         Ok(resp)
     }
-    async fn subscribe(&self, request: Request) -> SubscriptionStream {
+    async fn subscribe(&self, _request: Request) -> SubscriptionStream {
         unimplemented!()
     }
 }

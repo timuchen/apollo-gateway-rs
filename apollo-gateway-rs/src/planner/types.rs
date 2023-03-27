@@ -283,7 +283,7 @@ impl<'a> Serialize for VariableDefinitionsRef<'a> {
 
         let mut s = serializer.serialize_seq(None)?;
         for item in &self.variables {
-            s.serialize_element(&VariableDefinitionRef(*item))?;
+            s.serialize_element(&VariableDefinitionRef(item))?;
         }
         s.end()
     }

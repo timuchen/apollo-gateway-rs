@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+
 use actix::{Actor, AsyncContext, ActorContext, Handler, StreamHandler};
 use crate::schema::ComposedSchema;
 use actix_web_actors::ws;

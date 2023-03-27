@@ -1,10 +1,10 @@
 use std::collections::HashMap;
-use std::convert::TryFrom;
+
 use std::ops::{Deref, DerefMut};
-use futures_util::TryFutureExt;
+
 use crate::planner::{RequestData, Response};
-use http::HeaderMap;
-use once_cell::sync::Lazy;
+
+
 use crate::datasource::{Context, RemoteGraphQLDataSource, GraphqlSourceMiddleware};
 use crate::Request;
 
