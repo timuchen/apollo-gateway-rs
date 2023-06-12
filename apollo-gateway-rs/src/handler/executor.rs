@@ -667,7 +667,7 @@ fn add_tracing_spans(response: &mut Response) {
 
         let parent_path = String::from(resolver.path.parent_path());
 
-        let mut span_builder = tracer
+        let span_builder = tracer
             .span_builder(full_path.clone())
             .with_start_time(
                 tracing_result.start_time + Duration::nanoseconds(resolver.start_offset),
@@ -678,14 +678,14 @@ fn add_tracing_spans(response: &mut Response) {
                     + Duration::nanoseconds(resolver.duration),
             )
             .with_attributes(attributes);
-
-        if let Some(parent_cx) = resolvers.get(&parent_path) {
-            span_builder = span_builder.with_parent_context(parent_cx.clone());
-        }
+        let span = match resolvers.get(&parent_path) {
+            Some(parent_cx) => span_builder.start_with_context(&tracer, parent_cx),
+            None => span_builder.start(&tracer)
+        };
 
         resolvers.insert(
             full_path,
-            Context::current_with_span(span_builder.start(&tracer)),
+            Context::current_with_span(span),
         );
     }
 }

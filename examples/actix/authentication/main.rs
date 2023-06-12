@@ -241,7 +241,7 @@ mod todo_source {
             }
             Ok(())
         }
-        async fn on_connection_init(&self, message: &mut Option<Value>, ctx: &Context) -> anyhow::Result<()> {
+        async fn on_connection_init(&self, message: &mut Option<Value>, _: &Context) -> anyhow::Result<()> {
             println!("{:?}", message);
             Ok(())
         }
