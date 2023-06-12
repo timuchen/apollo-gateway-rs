@@ -84,7 +84,7 @@ impl WebSocketController {
             }))
             .is_err()
         {
-            anyhow::bail!("Connection closed.");
+            return Err(anyhow::anyhow!("Connection closed."));
         }
         rx_reply
             .await

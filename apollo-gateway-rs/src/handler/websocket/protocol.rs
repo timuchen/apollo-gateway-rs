@@ -19,7 +19,7 @@ impl std::str::FromStr for Protocols {
         } else if protocol.eq_ignore_ascii_case("graphql-transport-ws") {
             Ok(Protocols::GraphQLWS)
         } else {
-            anyhow::bail!("Unsupported Sec-WebSocket-Protocol: {}", protocol)
+            Err(anyhow::anyhow!("Unsupported Sec-WebSocket-Protocol: {}", protocol))
         }
     }
 }

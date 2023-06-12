@@ -28,7 +28,7 @@ value = { version = "5", package = "async-graphql-value" }
 indexmap = { version = "1.8.0", features = ["serde-1"] }
 serde_json = "1"
 http = "0.2.6"
-tokio-tungstenite = { version = "0.19", features = ["rustls-tls-native-roots"] }
+tokio-tungstenite = { version = "0.16", features = ["rustls-tls-native-roots"] }
 thiserror = "1.0.30"
 chrono = { version = "0.4", features = ["serde"] }
 reqwest = { version = "0.11", default-features = false, features = ["rustls-tls", "gzip", "brotli", "json"] }
