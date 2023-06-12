@@ -1,6 +1,6 @@
 [package]
 name = "apollo-gateway-rs"
-version = "0.8.0"
+version = "0.8.1"
 authors = ["K0R0VA m.yarykov@gmail.com", "Sunli <scott_s829@163.com>"]
 edition = "2021"
 description = "Apollo-gateway-rs is Apollo Federation implemented in Rust"
