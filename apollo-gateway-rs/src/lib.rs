@@ -23,11 +23,16 @@ use crate::handler::{ServiceRouteTable, SharedRouteTable};
 #[derive(Default)]
 pub struct GatewayServerBuilder {
     table: HashMap<String, Arc<dyn GraphqlSource>>,
+    limit: Option<usize>,
     // Compile time check, because someone can don't use build() and push Data<GatewayServerBuilder> instead of Data<GatewayServer> to state of app
     _marker: PhantomData<Cell<()>>,
 }
 
 impl GatewayServerBuilder {
+    pub fn with_limit_recursive_depth(mut self, limit: usize) -> GatewayServerBuilder {
+        self.limit = Some(limit);
+        self
+    }
     /// Append sources. Make sure that all sources have unique name
     pub fn with_sources<S: RemoteGraphQLDataSource>(mut self, sources: impl Iterator<Item=S>) -> GatewayServerBuilder {
         let sources = sources
@@ -110,6 +115,7 @@ impl GatewayServerBuilder {
         shared_route_table.set_route_table(table);
         GatewayServer {
             table: shared_route_table,
+            limit: self.limit
         }
     }
 }
@@ -134,6 +140,7 @@ impl GatewayServerBuilder {
 /// ```
 pub struct GatewayServer {
     table: SharedRouteTable<Arc<dyn GraphqlSource>>,
+    limit: Option<usize>
 }
 
 impl GatewayServer {
@@ -173,7 +180,7 @@ pub mod actix {
                 ])
                 .start(&tracer),
         );
-        server.table.query(request, ctx).with_context(query).await
+        server.table.query(request, ctx, server.limit).with_context(query).await
     }
 
     /// Subscription handler

@@ -19,6 +19,7 @@ async fn main() -> std::io::Result<()> {
         .data(Mutex::new(store))
         .enable_federation()
         .enable_subscription_in_federation()
+        .limit_recursive_depth(4)
         .finish());
     HttpServer::new(move || App::new()
         .app_data(schema.clone())
@@ -90,7 +91,7 @@ mod api {
     }
 
     mod schema {
-        use async_graphql::{Context, Object, InputObject, ID, Guard};
+        use async_graphql::{Context, Object, InputObject, ID, Guard, SimpleObject, Interface};
         use tokio::sync::broadcast::Sender;
         use tokio::sync::Mutex;
         use crate::Todo;
@@ -109,6 +110,57 @@ mod api {
 
         pub struct Query;
 
+        #[derive(SimpleObject, Default)]
+        pub struct Node {
+            pub id: i32,
+            pub parent_id: Option<i32>,
+            pub name: String,
+            pub r#type: String,
+            pub children: Option<Vec<Tree>>
+        }
+
+        #[derive(SimpleObject, Default)]
+        pub struct Edge {
+            pub id: i32,
+            pub parent_id: Option<i32>,
+            pub name: String,
+            pub kal_2: String,
+            pub r#type: String,
+            pub children: Option<Vec<Tree>>
+        }
+        #[derive(SimpleObject, Default)]
+        pub struct Edge1 {
+            pub id: i32,
+            pub parent_id: Option<i32>,
+            pub name: String,
+            pub kal_1: String,
+            pub r#type: String,
+            pub children: Option<Vec<Tree>>
+        }
+        #[derive(SimpleObject, Default)]
+        pub struct Edge2 {
+            pub id: i32,
+            pub parent_id: Option<i32>,
+            pub kal: String,
+            pub name: String,
+            pub r#type: String,
+            pub children: Option<Vec<Tree>>
+        }
+        #[derive(Interface)]
+        #[graphql(
+            field(name = "id", type = "&i32"),
+            field(name = "name", type = "&String"),
+            field(name = "parent_id", type = "&Option<i32>"),
+            field(name = "type", type = "&String"),
+            field(name = "children", type = "&Option<Vec<Tree>>"),
+        )]
+        pub enum Tree {
+            Node(Node),
+            Edge(Edge),
+            Edge1(Edge1),
+            Edge2(Edge2)
+        }
+
         #[Object(extends)]
         impl Query {
             #[graphql(entity)]
@@ -120,6 +172,9 @@ mod api {
                 let store = ctx.data_unchecked::<Mutex<Vec<Todo>>>();
                 let store = &*store.lock().await;
                 store.clone()
+            }
+            async fn nodes<'a>(&self) -> Vec<Tree> {
+                vec![]
             }
         }
 

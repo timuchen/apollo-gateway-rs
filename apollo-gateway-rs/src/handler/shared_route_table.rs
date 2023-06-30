@@ -6,6 +6,8 @@ use crate::planner::{PlanBuilder, RequestData, Response, ServerError};
 use crate::schema::ComposedSchema;
 use opentelemetry::trace::{TraceContextExt, Tracer};
 use opentelemetry::{global, Context as OpenTelemetryContext};
+use parser::Positioned;
+use parser::types::{ExecutableDocument, Selection, SelectionSet};
 use serde::Deserialize;
 use tokio::sync::{mpsc, RwLock};
 use tokio::time::{Duration, Instant};
@@ -140,7 +142,7 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> SharedRouteTable<S> {
         composed_schema.zip(route_table)
     }
 
-    pub async fn query(&self, request: RequestData, ctx: crate::datasource::Context) -> HttpResponse {
+    pub async fn query(&self, request: RequestData, ctx: crate::datasource::Context, limit: Option<usize>) -> HttpResponse {
         let tracer = global::tracer("graphql");
 
         let document = match tracer.in_span("parse", |_| parser::parse_query(&request.query)) {
@@ -149,6 +151,25 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> SharedRouteTable<S> {
                 return HttpResponse::BadRequest().body(err.to_string());
             }
         };
+        if let Some(limit) = limit {
+            match check_recursive_depth(&document, limit) {
+                Ok(_) => {},
+                Err(e) => {
+                    let response = Response {
+                        data: ConstValue::Null,
+                        errors: vec![e],
+                        extensions: Default::default(),
+                        headers: Default::default(),
+                    };
+                    let response = match serde_json::to_string(&response) {
+                        Ok(r) => r,
+                        Err(e) => return HttpResponse::BadRequest().body(e.to_string())
+                    };
+                    return HttpResponse::Ok().body(response);
+                }
+            }
+        }
+
 
         let (composed_schema, route_table) = match self.get().await {
             Some((composed_schema, route_table)) => (composed_schema, route_table),
@@ -163,7 +184,7 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> SharedRouteTable<S> {
                     Ok(r) => r,
                     Err(e) => return HttpResponse::BadRequest().body(e.to_string())
                 };
-                return HttpResponse::BadRequest().body(response);
+                return HttpResponse::Ok().body(response);
             }
         };
 
@@ -198,4 +219,59 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> SharedRouteTable<S> {
         };
         HttpResponse::Ok().body(response)
     }
+}
+
+
+fn check_recursive_depth(doc: &ExecutableDocument, max_depth: usize) -> Result<(), ServerError> {
+    fn check_selection_set(
+        doc: &ExecutableDocument,
+        selection_set: &Positioned<SelectionSet>,
+        current_depth: usize,
+        max_depth: usize,
+    ) -> Result<(), ServerError> {
+        if current_depth > max_depth {
+            return Err(ServerError::new(format!("The recursion depth of the query cannot be greater than `{}`", max_depth)));
+        }
+
+        for selection in &selection_set.node.items {
+            match &selection.node {
+                Selection::Field(field) => {
+                    if !field.node.selection_set.node.items.is_empty() {
+                        check_selection_set(
+                            doc,
+                            &field.node.selection_set,
+                            current_depth + 1,
+                            max_depth,
+                        )?;
+                    }
+                }
+                Selection::FragmentSpread(fragment_spread) => {
+                    if let Some(fragment) =
+                        doc.fragments.get(&fragment_spread.node.fragment_name.node)
+                    {
+                        check_selection_set(
+                            doc,
+                            &fragment.node.selection_set,
+                            current_depth + 1,
+                            max_depth,
+                        )?;
+                    }
+                }
+                Selection::InlineFragment(inline_fragment) => {
+                    check_selection_set(
+                        doc,
+                        &inline_fragment.node.selection_set,
+                        current_depth + 1,
+                        max_depth,
+                    )?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    for (_, operation) in doc.operations.iter() {
+        check_selection_set(doc, &operation.node.selection_set, 0, max_depth)?;
+    }
+    Ok(())
 }

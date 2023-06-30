@@ -5,7 +5,6 @@ use actix_web::cookie::Key;
 use async_graphql::http::{GraphQLPlaygroundConfig, playground_source};
 use tracing_actix_web::TracingLogger;
 use apollo_gateway_rs::{GatewayServer, actix::{graphql_request, graphql_subscription}};
-use crate::auth_source::AuthSource;
 use crate::user_middleware::{UserMiddlewareFactory};
 use crate::todo_source::TodoSource;
 
@@ -41,7 +40,8 @@ async fn main() -> std::io::Result<()> {
     init_tracing();
     let gateway_server = GatewayServer::builder()
         .with_middleware_source(TodoSource::new("todo-source", "0.0.0.0:8085"))
-        .with_middleware_source(AuthSource::new("auth-source", "0.0.0.0:8080"))
+        .with_limit_recursive_depth(4)
+        // .with_middleware_source(AuthSource::new("auth-source", "0.0.0.0:8080"))
         .build();
     let gateway_server = Data::new(gateway_server);
     let key = Key::generate();
@@ -55,7 +55,7 @@ async fn main() -> std::io::Result<()> {
         )
         .configure(configure_api)
     )
-        .bind("0.0.0.0:3000")?
+        .bind("0.0.0.0:4000")?
         .run()
         .await
 }

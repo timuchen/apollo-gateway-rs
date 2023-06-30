@@ -125,6 +125,9 @@ pub trait GraphqlSourceMiddleware: Send + Sync + 'static + RemoteGraphQLDataSour
             .filter_map(|(name, value)| value.to_str().ok().map(|value| (name.as_str().to_string(), value.to_string())))
             .collect();
         let mut resp = raw_resp.json::<Response>().await?;
+        if !resp.errors.is_empty() {
+
+        }
         resp.headers = headers;
         Ok(resp)
     }
