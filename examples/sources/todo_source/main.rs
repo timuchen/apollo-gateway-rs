@@ -19,7 +19,6 @@ async fn main() -> std::io::Result<()> {
         .data(Mutex::new(store))
         .enable_federation()
         .enable_subscription_in_federation()
-        .limit_recursive_depth(4)
         .finish());
     HttpServer::new(move || App::new()
         .app_data(schema.clone())

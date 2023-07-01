@@ -232,7 +232,6 @@ fn check_recursive_depth(doc: &ExecutableDocument, max_depth: usize) -> Result<(
         if current_depth > max_depth {
             return Err(ServerError::new(format!("The recursion depth of the query cannot be greater than `{}`", max_depth)));
         }
-
         for selection in &selection_set.node.items {
             match &selection.node {
                 Selection::Field(field) => {
@@ -268,6 +267,14 @@ fn check_recursive_depth(doc: &ExecutableDocument, max_depth: usize) -> Result<(
             }
         }
         Ok(())
+    }
+
+    if let Some(operation) = doc.operations.iter().next() {
+        if let Some(operation) = operation.0 {
+            if operation.as_ref() == "IntrospectionQuery" {
+                return Ok(())
+            }
+        }
     }
 
     for (_, operation) in doc.operations.iter() {
