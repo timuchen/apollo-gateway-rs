@@ -4,7 +4,6 @@ use actix::{Actor, AsyncContext, ActorContext, Handler, StreamHandler};
 use crate::schema::ComposedSchema;
 use actix_web_actors::ws;
 use actix_web_actors::ws::{CloseCode, CloseReason, Message, ProtocolError};
-use value::ConstValue;
 use crate::planner::{Response, ServerError};
 use crate::{RemoteGraphQLDataSource, Context, ServiceRouteTable, GraphqlSourceMiddleware};
 use super::protocol::{ClientMessage, ConnectionError, ServerMessage};
@@ -93,7 +92,7 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> StreamHandler<Result<
                             Ok(document) => document,
                             Err(err) => {
                                 let resp = Response {
-                                    data: ConstValue::Null,
+                                    data: None,
                                     errors: vec![ServerError::new(err.to_string())],
                                     extensions: Default::default(),
                                     headers: Default::default()

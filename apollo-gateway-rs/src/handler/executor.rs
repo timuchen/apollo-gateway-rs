@@ -42,7 +42,7 @@ impl<'e> Executor<'e> {
                 self.resp.into_inner()
             }
             RootNode::Subscribe(_) => Response {
-                data: ConstValue::Null,
+                data: None,
                 errors: vec![ServerError {
                     message: "Not supported".to_string(),
                     path: Default::default(),
@@ -100,7 +100,7 @@ impl<'e> Executor<'e> {
                                     id,
                                     node.service,
                                     RequestData::new(node.query.to_string())
-                                            .variables(node.variables.to_variables()),
+                                        .variables(node.variables.to_variables()),
                                     tx.clone(),
                                 )
                                 .with_context(cx))
@@ -113,7 +113,7 @@ impl<'e> Executor<'e> {
                                     vec![KEY_ERROR.string(err.to_string())],
                                 );
                                 Response {
-                                    data: ConstValue::Null,
+                                    data: None,
                                     errors: vec![ServerError {
                                         message: err.to_string(),
                                         path: Default::default(),
@@ -193,7 +193,12 @@ impl<'e> Executor<'e> {
     async fn execute_introspection_node(&self, introspection: &IntrospectionNode) {
         let value = IntrospectionRoot.resolve(&introspection.selection_set, self.schema);
         let mut current_resp = self.resp.lock().await;
-        merge_data(&mut current_resp.data, value);
+        if current_resp.data .is_none() {
+            current_resp.data = Some(ConstValue::Null)
+        }
+        if let Some(data) = &mut current_resp.data  {
+            merge_data(data, value);
+        }
     }
 
     async fn execute_fetch_node(&self, fetcher: &impl Fetcher, fetch: &FetchNode<'_>) {
@@ -231,7 +236,7 @@ impl<'e> Executor<'e> {
                     if resp.errors.is_empty() {
                         add_tracing_spans(&mut resp);
                         current_resp.headers = resp.headers;
-                        merge_data(&mut current_resp.data, resp.data);
+                        merge_data(current_resp.data.as_mut().unwrap_or(&mut ConstValue::Null), resp.data.unwrap_or_default());
                     } else {
                         rewrite_errors(None, &mut current_resp.errors, resp.errors);
                     }
@@ -407,7 +412,7 @@ impl<'e> Executor<'e> {
             let mut resp = self.resp.lock().await;
             get_representations(
                 &mut representations,
-                &mut resp.data,
+                resp.data.as_mut().unwrap_or(&mut ConstValue::Null),
                 &flatten.path,
                 flatten.prefix,
             );
@@ -467,10 +472,10 @@ impl<'e> Executor<'e> {
                 Ok(mut resp) => {
                     if resp.errors.is_empty() {
                         add_tracing_spans(&mut resp);
-                        if let ConstValue::Object(mut data) = resp.data {
+                        if let ConstValue::Object(mut data) = resp.data.unwrap_or_default() {
                             if let Some(ConstValue::List(values)) = data.remove("_entities") {
                                 flatten_values(
-                                    &mut current_resp.data,
+                                    current_resp.data.as_mut().unwrap_or(&mut ConstValue::Null),
                                     &flatten.path,
                                     &mut values.into_iter().fuse(),
                                     &mut flags.into_iter().fuse(),
