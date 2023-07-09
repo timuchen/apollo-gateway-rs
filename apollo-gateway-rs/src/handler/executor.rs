@@ -236,7 +236,12 @@ impl<'e> Executor<'e> {
                     if resp.errors.is_empty() {
                         add_tracing_spans(&mut resp);
                         current_resp.headers = resp.headers;
-                        merge_data(current_resp.data.as_mut().unwrap_or(&mut ConstValue::Null), resp.data.unwrap_or_default());
+                        if current_resp.data .is_none() {
+                            current_resp.data = Some(ConstValue::Null)
+                        }
+                        if let Some(data) = &mut current_resp.data  {
+                            merge_data(data, resp.data.unwrap_or(ConstValue::Null));
+                        }
                     } else {
                         rewrite_errors(None, &mut current_resp.errors, resp.errors);
                     }
