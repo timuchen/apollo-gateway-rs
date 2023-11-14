@@ -408,20 +408,20 @@ checksum = "9c7d0618f0e0b7e8ff11427422b64564d5fb0be1940354bfe2e0529b18a9d9b8"
 
 [[package]]
 name = "apollo-gateway-rs"
-version = "0.8.2"
+version = "0.9.0"
 dependencies = [
  "actix",
  "actix-web",
  "actix-web-actors",
  "anyhow",
- "async-graphql-parser",
- "async-graphql-value",
+ "async-graphql-parser 6.0.10",
+ "async-graphql-value 6.0.10",
  "async-stream",
  "async-trait",
  "chrono",
  "futures-util",
  "http",
- "indexmap 1.9.3",
+ "indexmap 2.0.0",
  "k8s-openapi",
  "once_cell",
  "opentelemetry 0.19.0",
@@ -495,8 +495,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b35ef8f9be23ee30fe1eb1cf175c689bc33517c6c6d0fd0669dade611e5ced7f"
 dependencies = [
  "async-graphql-derive",
- "async-graphql-parser",
- "async-graphql-value",
+ "async-graphql-parser 5.0.10",
+ "async-graphql-value 5.0.10",
  "async-stream",
  "async-trait",
  "base64 0.13.1",
@@ -546,7 +546,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a0f6ceed3640b4825424da70a5107e79d48d9b2bc6318dfc666b2fc4777f8c4"
 dependencies = [
  "Inflector",
- "async-graphql-parser",
+ "async-graphql-parser 5.0.10",
  "darling",
  "proc-macro-crate",
  "proc-macro2 1.0.63",
@@ -561,7 +561,19 @@ version = "5.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ecc308cd3bc611ee86c9cf19182d2b5ee583da40761970e41207f088be3db18f"
 dependencies = [
- "async-graphql-value",
+ "async-graphql-value 5.0.10",
+ "pest",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "async-graphql-parser"
+version = "6.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "786a2329756a9946d83106e389a977a808ab22628cb797c1afcf174fd01c40d5"
+dependencies = [
+ "async-graphql-value 6.0.10",
  "pest",
  "serde",
  "serde_json",
@@ -575,6 +587,18 @@ checksum = "d461325bfb04058070712296601dfe5e5bd6cdff84780a0a8c569ffb15c87eb3"
 dependencies = [
  "bytes",
  "indexmap 1.9.3",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "async-graphql-value"
+version = "6.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "305ca1e36538655babbfa8a9a1d82cb1dd01961af2feeafa06d3a0c9af793bed"
+dependencies = [
+ "bytes",
+ "indexmap 2.0.0",
  "serde",
  "serde_json",
 ]
@@ -1584,6 +1608,7 @@ checksum = "d5477fe2230a79769d8dc68e0eabf5437907c0457a5614a9e8dddb67f65eb65d"
 dependencies = [
  "equivalent",
  "hashbrown 0.14.0",
+ "serde",
 ]
 
 [[package]]
@@ -2020,10 +2045,11 @@ checksum = "9b2a4787296e9989611394c33f193f676704af1686e70b8f8033ab5ba9a35a94"
 
 [[package]]
 name = "pest"
-version = "2.7.0"
+version = "2.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f73935e4d55e2abf7f130186537b19e7a4abc886a0252380b59248af473a3fc9"
+checksum = "ae9cee2a55a544be8b89dc6848072af97a20f2422603c10865be2a42b580fff5"
 dependencies = [
+ "memchr",
  "thiserror",
  "ucd-trie",
 ]
