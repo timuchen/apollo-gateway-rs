@@ -62,7 +62,7 @@ impl<'a> PlanBuilder<'a> {
             crate::validation::check_rules(self.schema, &self.document, &self.variables);
         if !rule_errors.is_empty() {
             return Err(Response {
-                data: ConstValue::Null,
+                data: None,
                 errors: rule_errors
                     .into_iter()
                     .map(|err| ServerError {

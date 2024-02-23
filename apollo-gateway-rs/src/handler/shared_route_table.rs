@@ -11,7 +11,6 @@ use parser::types::{ExecutableDocument, Selection, SelectionSet};
 use serde::Deserialize;
 use tokio::sync::{mpsc, RwLock};
 use tokio::time::{Duration, Instant};
-use value::ConstValue;
 use crate::datasource::RemoteGraphQLDataSource;
 use crate::GraphqlSourceMiddleware;
 
@@ -116,7 +115,7 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> SharedRouteTable<S> {
                     .await
                     .with_context(|| format!("Failed to fetch SDL from '{}'.", service))?;
                 let resp: ResponseQuery =
-                    value::from_value(resp.data).context("Failed to parse response.")?;
+                    value::from_value(resp.data.unwrap_or_default()).context("Failed to parse response.")?;
                 let document = parser::parse_schema(resp.service.sdl)
                     .with_context(|| format!("Invalid SDL from '{}'.", service))?;
                 Ok::<_, Error>((service.to_string(), document))
@@ -156,7 +155,7 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> SharedRouteTable<S> {
                 Ok(_) => {},
                 Err(e) => {
                     let response = Response {
-                        data: ConstValue::Null,
+                        data: None,
                         errors: vec![e],
                         extensions: Default::default(),
                         headers: Default::default(),
@@ -175,7 +174,7 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> SharedRouteTable<S> {
             Some((composed_schema, route_table)) => (composed_schema, route_table),
             _ => {
                 let response = Response {
-                    data: ConstValue::Null,
+                    data: None,
                     errors: vec![ServerError::new("Not ready.")],
                     extensions: Default::default(),
                     headers: Default::default(),
