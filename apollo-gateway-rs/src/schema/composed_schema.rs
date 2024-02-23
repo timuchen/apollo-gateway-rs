@@ -302,14 +302,14 @@ impl ComposedSchema {
 
         if let Some(mutation) = composed_schema.types.get("Mutation") {
             if mutation.fields.is_empty() {
-                composed_schema.types.remove("Mutation");
+                composed_schema.types.shift_remove("Mutation");
                 composed_schema.mutation_type = None;
             }
         }
 
         if let Some(subscription) = composed_schema.types.get("Subscription") {
             if subscription.fields.is_empty() {
-                composed_schema.types.remove("Subscription");
+                composed_schema.types.shift_remove("Subscription");
                 composed_schema.subscription_type = None;
             }
         }

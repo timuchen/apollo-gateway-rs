@@ -285,7 +285,7 @@ impl<'e> Executor<'e> {
                 }
             }
             for key in keys {
-                if let Some(value) = from.remove(&key) {
+                if let Some(value) = from.shift_remove(&key) {
                     let name = Name::new(&key[prefix.len()..]);
                     res.insert(name, value);
                 }
@@ -478,7 +478,7 @@ impl<'e> Executor<'e> {
                     if resp.errors.is_empty() {
                         add_tracing_spans(&mut resp);
                         if let ConstValue::Object(mut data) = resp.data.unwrap_or_default() {
-                            if let Some(ConstValue::List(values)) = data.remove("_entities") {
+                            if let Some(ConstValue::List(values)) = data.shift_remove("_entities") {
                                 flatten_values(
                                     current_resp.data.as_mut().unwrap_or(&mut ConstValue::Null),
                                     &flatten.path,

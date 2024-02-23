@@ -13,4 +13,4 @@ pub use plan::{
     SequenceNode, SubscribeNode,
 };
 pub use request::{RequestData, Request};
-pub use response::{ErrorPath, Response, ServerError};
+pub use response::{Response, ServerError};
