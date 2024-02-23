@@ -11,6 +11,7 @@ pub struct Request {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RequestData {
     pub query: String,
+    #[serde(rename(deserialize = "operationName"))]
     pub operation: Option<String>,
     #[serde(skip_serializing_if = "variables_is_empty", default)]
     pub variables: Variables,
