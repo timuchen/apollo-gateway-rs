@@ -38,8 +38,7 @@ impl ServerError {
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Response {
-    pub data: ConstValue,
-
+    pub data: Option<ConstValue>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub errors: Vec<ServerError>,
 
