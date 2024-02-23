@@ -1,2 +1,3 @@
 [workspace]
 members = ["apollo-gateway-rs", "examples"]
+resolver = "2"
