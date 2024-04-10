@@ -118,7 +118,10 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> StreamHandler<Result<
                             use crate::planner::PlanBuilder;
                             use super::super::executor::Executor;
                             async_stream::stream! {
-                                let builder = PlanBuilder::new(&schema, document).variables(payload.variables);
+                                let mut builder = PlanBuilder::new(&schema, document).variables(payload.variables);
+                                if let Some(operation) = payload.operation {
+                                   builder = builder.operation_name(operation);
+                                }
                                 let node = match builder.plan() {
                                     Ok(node) => node,
                                     Err(resp) => {
