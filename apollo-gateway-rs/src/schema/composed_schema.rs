@@ -674,6 +674,21 @@ fn finish_schema(composed_schema: &mut ComposedSchema) {
                 provides: None,
             },
         );
+
+        let name = Name::new("__typename");
+        query_type.fields.insert(
+            name.clone(),
+            MetaField {
+                description: None,
+                name,
+                arguments: Default::default(),
+                ty: Type::new("String!").unwrap(),
+                deprecation: Deprecation::NoDeprecated,
+                service: None,
+                requires: None,
+                provides: None,
+            },
+        );
     }
 
     let mut possible_types: HashMap<Name, IndexSet<Name>> = Default::default();
