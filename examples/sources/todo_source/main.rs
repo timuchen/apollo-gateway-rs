@@ -175,6 +175,10 @@ mod api {
             async fn nodes<'a>(&self) -> Vec<Tree> {
                 vec![]
             }
+
+            async fn node(&self) -> Node {
+                Node::default()
+            }
         }
 
         #[derive(InputObject)]

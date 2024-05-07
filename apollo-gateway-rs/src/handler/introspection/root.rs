@@ -23,7 +23,8 @@ impl Resolver for IntrospectionRoot {
                     }
                 }
                 ConstValue::Null
-            }
+            },
+            "__typename" => ConstValue::String("Query".to_string()),
             _ => ConstValue::Null,
         })
     }

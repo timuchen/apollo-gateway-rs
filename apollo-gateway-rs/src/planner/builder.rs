@@ -164,7 +164,6 @@ impl<'a> Context<'a> {
                             ctx.build_introspection_field(inspection_selection_set, &field.node);
                             continue;
                         }
-
                         if let Some(service) = &field_definition.service {
                             let selection_ref_set = root_group.selection_set_mut(service);
                             let mut path = ResponsePath::default();
@@ -999,5 +998,5 @@ fn referenced_variables<'a>(
 
 #[inline]
 fn is_introspection_field(name: &str) -> bool {
-    name == "__type" || name == "__schema"
+    name == "__type" || name == "__schema" || name == "__typename"
 }
