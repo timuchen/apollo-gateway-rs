@@ -187,12 +187,18 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> SharedRouteTable<S> {
             }
         };
 
+        let root_kind = document.operations.iter().next()
+            .map(|(_, op)| op.node.ty.into())
+            .unwrap_or(super::introspection::RootKind::Query);
+
         let mut plan_builder =
             PlanBuilder::new(&composed_schema, document).variables(request.variables);
 
         if let Some(operation) = request.operation {
             plan_builder = plan_builder.operation_name(operation);
         }
+
+
 
         let plan = match tracer.in_span("plan", |_| plan_builder.plan()) {
             Ok(plan) => plan,
@@ -205,10 +211,11 @@ impl<S: RemoteGraphQLDataSource + GraphqlSourceMiddleware> SharedRouteTable<S> {
             }
         };
 
+
         let executor = Executor::new(&composed_schema);
         let fetcher = HttpFetcher::new(&*route_table, ctx);
         let resp = opentelemetry::trace::FutureExt::with_context(
-            executor.execute_query(&fetcher, &plan),
+            executor.execute_query(&fetcher, &plan, root_kind),
             OpenTelemetryContext::current_with_span(tracer.span_builder("execute").start(&tracer)),
         )
             .await;

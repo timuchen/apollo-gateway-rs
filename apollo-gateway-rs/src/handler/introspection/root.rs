@@ -1,12 +1,32 @@
 use crate::planner::IntrospectionSelectionSet;
 use crate::schema::ComposedSchema;
+use parser::types::OperationType;
 use value::ConstValue;
 
 use super::r#type::IntrospectionType;
 use super::resolver::{resolve_obj, Resolver};
 use super::schema::IntrospectionSchema;
 
-pub struct IntrospectionRoot;
+pub struct IntrospectionRoot {
+    pub(crate) kind: RootKind
+}
+
+#[derive(Clone, Copy)]
+pub enum RootKind {
+    Query,
+    Mutation,
+    Subscription
+}
+
+impl From<OperationType> for RootKind {
+     fn from(value: OperationType) -> Self {
+         match value {
+            OperationType::Mutation => Self::Mutation,
+            OperationType::Query => Self::Query,
+            OperationType::Subscription => Self::Subscription,
+         }
+     }
+}
 
 impl Resolver for IntrospectionRoot {
     fn resolve(
@@ -24,7 +44,11 @@ impl Resolver for IntrospectionRoot {
                 }
                 ConstValue::Null
             },
-            "__typename" => ConstValue::String("Query".to_string()),
+            "__typename" => match self.kind {
+                RootKind::Query => ConstValue::String(format!("Query")),
+                RootKind::Mutation => ConstValue::String(format!("Mutation")),
+                RootKind::Subscription => ConstValue::String(format!("Subscription")),
+            },
             _ => ConstValue::Null,
         })
     }

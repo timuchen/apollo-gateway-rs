@@ -156,14 +156,16 @@ impl<'a> Context<'a> {
                 match &selection.node {
                     Selection::Field(field) => {
                         let field_name = field.node.name.node.as_str();
-                        let field_definition = match parent_type.fields.get(field_name) {
-                            Some(field_definition) => field_definition,
-                            None => continue,
-                        };
                         if is_introspection_field(field_name) {
                             ctx.build_introspection_field(inspection_selection_set, &field.node);
                             continue;
                         }
+                        let field_definition = match parent_type.fields.get(field_name) {
+                            Some(field_definition) => field_definition,
+                            None => continue,
+                        };
+                        println!("{:?}", field_name);
+                        
                         if let Some(service) = &field_definition.service {
                             let selection_ref_set = root_group.selection_set_mut(service);
                             let mut path = ResponsePath::default();

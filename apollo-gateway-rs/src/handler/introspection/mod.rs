@@ -8,4 +8,4 @@ mod schema;
 mod r#type;
 
 pub use resolver::Resolver;
-pub use root::IntrospectionRoot;
+pub use root::{IntrospectionRoot, RootKind};

@@ -15,7 +15,7 @@ use value::{ConstValue, Name, Variables};
 
 use super::constants::*;
 use super::fetcher::{Fetcher, WebSocketFetcher};
-use super::introspection::{IntrospectionRoot, Resolver};
+use super::introspection::{IntrospectionRoot, Resolver, RootKind};
 use super::websocket::WebSocketController;
 
 /// Query plan executor
@@ -35,10 +35,10 @@ impl<'e> Executor<'e> {
     /// Execute a query plan and return the results.
     ///
     /// Only `Query` and `Mutation` operations are supported.
-    pub async fn execute_query(self, fetcher: &impl Fetcher, node: &RootNode<'_>) -> Response {
+    pub async fn execute_query(self, fetcher: &impl Fetcher, node: &RootNode<'_>, root_kind: RootKind) -> Response {
         match node {
             RootNode::Query(node) => {
-                self.execute_node(fetcher, node).await;
+                self.execute_node(fetcher, node, root_kind).await;
                 self.resp.into_inner()
             }
             RootNode::Subscribe(_) => Response {
@@ -65,13 +65,12 @@ impl<'e> Executor<'e> {
         let fetcher = WebSocketFetcher::new(ws_controller.clone());
         match node {
             RootNode::Query(node) => Box::pin(async_stream::stream! {
-                self.execute_node(&fetcher, node).await;
+                self.execute_node(&fetcher, node, RootKind::Query).await;
                 yield self.resp.into_inner();
             }),
             RootNode::Subscribe(SubscribeNode {
                                     subscribe_nodes,
-                                    flatten_node,
-                                }) => {
+                                    flatten_node,}) => {
                 let tracer = global::tracer("graphql");
                 let span = tracer.start("subscribe");
                 let cx = Context::current_with_span(span);
@@ -136,7 +135,7 @@ impl<'e> Executor<'e> {
                                 *self.resp.lock().await = response;
 
                                 let cx = Context::current_with_span(tracer.span_builder("push").start(&tracer));
-                                self.execute_node(&fetcher, flatten_node).with_context(cx).await;
+                                self.execute_node(&fetcher, flatten_node, RootKind::Subscription).with_context(cx).await;
 
                                 yield std::mem::take(&mut *self.resp.lock().await);
                             } else {
@@ -157,14 +156,15 @@ impl<'e> Executor<'e> {
         &'a self,
         fetcher: &'a impl Fetcher,
         node: &'a PlanNode<'_>,
+        root_kind: RootKind
     ) -> BoxFuture<'a, ()> {
         Box::pin(async move {
             match node {
-                PlanNode::Sequence(sequence) => self.execute_sequence_node(fetcher, sequence).await,
-                PlanNode::Parallel(parallel) => self.execute_parallel_node(fetcher, parallel).await,
+                PlanNode::Sequence(sequence) => self.execute_sequence_node(fetcher, sequence, root_kind).await,
+                PlanNode::Parallel(parallel) => self.execute_parallel_node(fetcher, parallel, root_kind).await,
                 PlanNode::Introspection(introspection) => {
                     let tracer = global::tracer("graphql");
-                    self.execute_introspection_node(introspection)
+                    self.execute_introspection_node(introspection, root_kind)
                         .with_context(Context::current_with_span(tracer.start("introspection")))
                         .await
                 }
@@ -174,24 +174,24 @@ impl<'e> Executor<'e> {
         })
     }
 
-    async fn execute_sequence_node(&self, fetcher: &impl Fetcher, sequence: &SequenceNode<'_>) {
+    async fn execute_sequence_node(&self, fetcher: &impl Fetcher, sequence: &SequenceNode<'_>, root_kind: RootKind) {
         for node in &sequence.nodes {
-            self.execute_node(fetcher, node).await;
+            self.execute_node(fetcher, node, root_kind).await;
         }
     }
 
-    async fn execute_parallel_node(&self, fetcher: &impl Fetcher, parallel: &ParallelNode<'_>) {
+    async fn execute_parallel_node(&self, fetcher: &impl Fetcher, parallel: &ParallelNode<'_>, root_kind: RootKind) {
         futures_util::future::join_all(
             parallel
                 .nodes
                 .iter()
-                .map(|node| async move { self.execute_node(fetcher, node).await }),
+                .map(|node| async move { self.execute_node(fetcher, node, root_kind).await }),
         )
             .await;
     }
 
-    async fn execute_introspection_node(&self, introspection: &IntrospectionNode) {
-        let value = IntrospectionRoot.resolve(&introspection.selection_set, self.schema);
+    async fn execute_introspection_node(&self, introspection: &IntrospectionNode, kind: RootKind) {
+        let value = IntrospectionRoot { kind }.resolve(&introspection.selection_set, self.schema);
         let mut current_resp = self.resp.lock().await;
         if current_resp.data .is_none() {
             current_resp.data = Some(ConstValue::Null)
